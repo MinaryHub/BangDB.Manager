@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { countWhere, dropTable, dropView, errorText, goQuery, goRows, goTables } from '../api/goapi';
+import { mapLimit } from '../api/limit';
 import type { GoTableInfo } from '../api/types';
 import { TopBar } from '../components/Layout';
 import { Icons } from '../components/kinds';
@@ -24,17 +25,27 @@ export default function GoTablesPage() {
   const [creating, setCreating] = useState<'table' | 'view' | null>(null);
   const [preview, setPreview] = useState<Record<string, unknown>[] | null>(null);
 
+  // each load gets a number; counts of an older load (or after leaving the page) are dropped
+  const loadSeq = useRef(0);
+  useEffect(() => () => { loadSeq.current++; }, []);
   const load = useCallback(async () => {
     if (!conn) return;
+    const my = ++loadSeq.current;
+    const stale = () => my !== loadSeq.current;
     setLoading(true);
     const r = await goTables(conn);
+    if (stale()) return;
     setLoading(false);
     if (!r.ok) { setErr(errorText(r)); setTables([]); return; }
     setErr('');
     setTables(r.data.tables);
-    const out: Record<string, number | undefined> = {};
-    await Promise.all(r.data.tables.filter((t) => t.kind === 'table').map(async (t) => { out[t.name] = await countWhere(conn, t.name); }));
-    setCounts(out);
+    setCounts({});
+    // row counts: a few at a time (a COUNT(*) per table all at once floods the
+    // server and the gateway's small pool) and shown as each one arrives
+    await mapLimit(r.data.tables.filter((t) => t.kind === 'table'), 4, async (t) => {
+      const n = await countWhere(conn, t.name);
+      if (!stale()) setCounts((c) => ({ ...c, [t.name]: n }));
+    }, stale);
   }, [conn]);
   useEffect(() => { load(); }, [load]);
 
@@ -70,7 +81,8 @@ export default function GoTablesPage() {
           <button className="btn primary sm" onClick={() => setCreating('table')}>+ Table</button>
         </>} />
       <div className="toolbar">
-        <input className="inp filter" placeholder="Search tables and views" value={filter} onChange={(e) => setFilter(e.target.value)} />
+        <input type="search" className="inp filter" placeholder="Search tables and views — Enter opens the first match" value={filter} onChange={(e) => setFilter(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && shown[0]) nav(`${base}/t/${encodeURIComponent(shown[0].name)}`); }} />
         <span className="muted small">{nT} tables · {tables.length - nT} views</span>
         <button className="btn ghost icon sm" onClick={load} disabled={loading} title="Refresh" aria-label="Refresh">{loading ? <span className="spin" /> : Icons.refresh}</button>
       </div>

@@ -4,12 +4,12 @@ import { raw } from '../api/bangdb';
 import type { ApiResult, HttpMethod } from '../api/types';
 import { TopBar } from '../components/Layout';
 import { Field, JsonOut, ResultBadge, describeResult, useToast } from '../components/ui';
-import { store, useConnection, useStore } from '../store/store';
+import { store, useConnection, useLog } from '../store/store';
 
 export default function ConsolePage() {
   const { connId } = useParams();
   const conn = useConnection(connId);
-  const { log } = useStore();
+  const log = useLog();
   const toast = useToast();
   const [method, setMethod] = useState<HttpMethod>('GET');
   const [path, setPath] = useState(conn?.kind === 'go' ? '/v1/tables' : `/db/${conn?.defaultDb ?? 'mydb'}/list`);

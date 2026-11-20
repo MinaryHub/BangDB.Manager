@@ -29,9 +29,10 @@ BangDB 와 주요 데이터베이스(PostgreSQL, MySQL/MariaDB, SQL Server, SQLi
 - 테이블: 목록(검색), 생성 — Go: 컬럼 빌더(타입/PK/NOT NULL/UNIQUE/DEFAULT) 또는 SQL 직접 편집, REST: WIDE/NORMAL·키 옵션 — , 삭제
 - 테이블 상세: 행 수, SQL 기반 데이터 조회(테이블/JSON 보기), 행 터치 → 수정/삭제(Go: 기본 키 기준 UPDATE/DELETE), JSON·CSV 내보내기, JSON/JSONL 대량 가져오기(진행률, 오류 시 중단), 행/문서 입력, 키 조회/삭제, 인덱스 추가/삭제(Go: CREATE/DROP INDEX, 기존 인덱스 목록), 테이블 정보(Go: 컬럼·PK·정의 SQL)
 - 서버 상태 조회(`serverStats`)
-- SQL 콘솔 (히스토리, Ctrl+Enter)
+- SQL 콘솔 (히스토리, Ctrl+Enter 실행, Ctrl+Shift+Enter 커서 위치 문장만 실행, 스키마 패널 검색, 결과 정렬)
+- 빠른 열기 (Ctrl/⌘+K): 테이블·서버·페이지로 바로 이동
 - REST 콘솔 (임의 메서드/경로/본문 + 최근 요청 기록)
-- 모바일 하단 탭 / 데스크톱 사이드바, 다크·라이트 자동, 오프라인 캐시(PWA)
+- 모바일 하단 탭 / 데스크톱 사이드바, 테마 (시스템 / 라이트 / 다크), 오프라인 캐시(PWA)
 
 연결 정보는 기기의 브라우저 저장소(localStorage)에만 저장됩니다.
 

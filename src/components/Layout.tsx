@@ -1,6 +1,36 @@
-import { NavLink, Outlet, useParams } from 'react-router-dom';
-import { useStore } from '../store/store';
+import { Component, Suspense, type ReactNode } from 'react';
+import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
+import { useConnections } from '../store/store';
+import { nextTheme, setTheme, useTheme, type Theme } from '../theme';
+import CommandPalette, { openPalette } from './CommandPalette';
 import { Icons, KindBadge, KIND_STYLE } from './kinds';
+
+const THEME_ICON: Record<Theme, JSX.Element> = { auto: Icons.theme, light: Icons.sun, dark: Icons.moon };
+const THEME_LABEL: Record<Theme, string> = { auto: 'System theme', light: 'Light theme', dark: 'Dark theme' };
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+export const MOD_KEY = isMac ? '⌘' : 'Ctrl';
+
+/**
+ * Catches a page that failed to render — most often a lazily loaded page
+ * whose file is gone after an update — instead of leaving a blank screen.
+ */
+class PageBoundary extends Component<{ children: ReactNode; resetKey: string }, { error: Error | null; key: string }> {
+  state = { error: null as Error | null, key: this.props.resetKey };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  static getDerivedStateFromProps(p: { resetKey: string }, s: { key: string }) { return p.resetKey !== s.key ? { error: null, key: p.resetKey } : null; }
+  render() {
+    const e = this.state.error;
+    if (!e) return this.props.children;
+    const stale = /dynamically imported module|Loading chunk|Importing a module script failed/i.test(e.message);
+    return (
+      <div className="card danger" role="alert">
+        <b>{stale ? 'This screen could not be loaded' : 'Something went wrong on this screen'}</b>
+        <p className="small">{stale ? 'The app was probably updated or the network dropped. Reload to get the current version.' : e.message}</p>
+        <button className="btn sm" onClick={() => location.reload()}>Reload</button>
+      </div>
+    );
+  }
+}
 
 const I = {
   server: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg>,
@@ -13,7 +43,9 @@ const I = {
 
 export default function Layout() {
   const { connId } = useParams();
-  const { connections } = useStore();
+  const loc = useLocation();
+  const theme = useTheme();
+  const connections = useConnections();
   const active = connections.find((c) => c.id === connId) ?? connections[0];
   const base = active ? `/c/${active.id}` : undefined;
   const kind = active?.kind;
@@ -30,11 +62,21 @@ export default function Layout() {
   const nav = (cls: string) => (
     <nav className={cls}>
       {cls === 'sidenav' && <div className="brand"><span className="mark">{Icons.logo}</span>BangDB Manager</div>}
+      {cls === 'sidenav' && (
+        <button className="quick" onClick={openPalette} title="Quick open: servers, tables, pages">
+          {Icons.search}<span className="grow">Quick open…</span><kbd>{MOD_KEY}</kbd><kbd>K</kbd>
+        </button>
+      )}
       {links.map((l) => (
         <NavLink key={l.label} to={l.to} end={!!l.end} className={({ isActive }) => (isActive && !l.disabled ? 'active' : '')} style={l.disabled ? { opacity: 0.4 } : undefined}>
           {l.icon}<span>{l.label}</span>
         </NavLink>
       ))}
+      {cls === 'sidenav' && (
+        <button className="themebtn" onClick={() => setTheme(nextTheme(theme))} title="Switch theme (system → light → dark)">
+          {THEME_ICON[theme]}<span>{THEME_LABEL[theme]}</span>
+        </button>
+      )}
       {cls === 'sidenav' && active && (
         <NavLink to="/connections" className="cur" title="Switch server">
           <KindBadge kind={active.kind} small />
@@ -46,8 +88,13 @@ export default function Layout() {
   return (
     <div className="app">
       {nav('sidenav')}
-      <main className="main"><Outlet /></main>
+      <main className="main">
+        <PageBoundary resetKey={loc.pathname}>
+          <Suspense fallback={<div className="page-loading" aria-busy="true"><span className="spin" /></div>}><Outlet /></Suspense>
+        </PageBoundary>
+      </main>
       {nav('tabbar')}
+      <CommandPalette />
     </div>
   );
 }
@@ -66,6 +113,7 @@ export function TopBar({ title, crumbs, right }: { title: string; crumbs?: { to?
         <h1>{title}</h1>
       </div>
       {right}
+      <button className="btn ghost icon sm narrow-only" onClick={openPalette} title="Quick open" aria-label="Quick open">{Icons.search}</button>
     </div>
   );
 }

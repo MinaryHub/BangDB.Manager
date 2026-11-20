@@ -118,15 +118,30 @@ function DataTab({ conn, table, info, onChanged }: TabProps) {
     return parts.join(' AND ');
   }, [pg.where, pg.search, columns, d]);
 
+  // Paging and sorting only re-read the page; the COUNT(*) (slow on big
+  // tables) runs again only when the filter changes or rows were saved.
+  // Answers that arrive after a newer request started are dropped, so
+  // fast clicking through pages never shows an older page.
+  const loadSeq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++loadSeq.current;
     setBusy(true);
     const sql = pageSql(table, { where: cond, orderBy: pg.orderBy, desc: pg.desc, limit: pg.limit, offset: pg.offset }, isView ? false : ident ?? false, d);
-    const [r, n] = await Promise.all([goQuery(conn, sql, undefined, { limit: pg.limit }), countWhere(conn, table, cond)]);
+    const r = await goQuery(conn, sql, undefined, { limit: pg.limit });
+    if (my !== loadSeq.current) return;
     setBusy(false);
     if (r.ok) { setData(r.data); setErr(''); } else { setData(null); setErr(errorText(r)); }
-    setMatched(n);
   }, [conn, table, cond, pg.orderBy, pg.desc, pg.limit, pg.offset, isView, ident, d]);
   useEffect(() => { load(); }, [load]);
+
+  const countSeq = useRef(0);
+  const recount = useCallback(async () => {
+    const my = ++countSeq.current;
+    const n = await countWhere(conn, table, cond);
+    if (my === countSeq.current) setMatched(n);
+  }, [conn, table, cond]);
+  useEffect(() => { setMatched(undefined); recount(); }, [recount]);
+  const refresh = () => { load(); recount(); };
 
   const rawRows = useMemo(() => (data ? goRows(data) : []), [data]);
   const unsafeIds = ident?.kind === 'rowid' && rawRows.some((r) => !Number.isSafeInteger(r[ROWID]));
@@ -209,7 +224,7 @@ function DataTab({ conn, table, info, onChanged }: TabProps) {
     setSaving(true);
     const ok = await commit(changes, `Saved — ${nEdits} edited · ${inserts.length} added · ${deleted.size} deleted`);
     setSaving(false);
-    if (ok) { reset(); load(); onChanged(); }
+    if (ok) { reset(); refresh(); onChanged(); }
   }
 
   useEffect(() => {
@@ -217,6 +232,27 @@ function DataTab({ conn, table, info, onChanged }: TabProps) {
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   });
+
+  // quick search applies while typing (after a short pause) unless edits are
+  // pending — then Enter is needed, so typing never pops a discard prompt
+  useEffect(() => {
+    if (searchIn === pg.search || pending) return;
+    const t = setTimeout(() => setPg((x) => ({ ...x, search: searchIn, offset: 0 })), 400);
+    return () => clearTimeout(t);
+  }, [searchIn, pg.search, pending]);
+
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || t?.closest('input, textarea, select, [contenteditable="true"], .modal')) return;
+      e.preventDefault();
+      searchRef.current?.focus();
+      searchRef.current?.select();
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, []);
 
   function sortBy(col: string) {
     if (pg.orderBy !== col) go({ orderBy: col, desc: false, offset: 0 });
@@ -232,7 +268,8 @@ function DataTab({ conn, table, info, onChanged }: TabProps) {
   return (
     <>
       <div className="toolbar">
-        <input className="inp filter" placeholder="Quick search (text columns)" value={searchIn} onChange={(e) => setSearchIn(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && go({ search: searchIn, offset: 0 })} />
+        <input ref={searchRef} type="search" className="inp filter" placeholder="Quick search (text columns)  —  press / to focus" value={searchIn} onChange={(e) => setSearchIn(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') go({ search: searchIn, offset: 0 }); else if (e.key === 'Escape' && searchIn) { e.preventDefault(); setSearchIn(''); } }} />
         <input className="inp filter mono" placeholder="WHERE clause  e.g. age > 30 AND name LIKE 'k%'" value={whereIn} onChange={(e) => setWhereIn(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && go({ where: whereIn, offset: 0 })} />
         <button className="btn sm primary" onClick={() => go({ where: whereIn, search: searchIn, offset: 0 })} disabled={busy}>{busy ? '…' : 'Load'}</button>
         {(pg.where || pg.search) && <button className="btn sm ghost" onClick={() => { setWhereIn(''); setSearchIn(''); go({ where: '', search: '', offset: 0 }); }}>Clear filters</button>}
@@ -251,7 +288,7 @@ function DataTab({ conn, table, info, onChanged }: TabProps) {
           <select className="inp" value={pg.limit} onChange={(e) => go({ limit: Number(e.target.value), offset: 0 })} style={{ minHeight: 32, padding: '4px 6px' }}>
             {[25, 50, 100, 200, 500].map((n) => <option key={n} value={n}>{n} per page</option>)}
           </select>
-          <button className="btn sm ghost" onClick={async () => { if (await guard()) load(); }} title="Refresh">↻</button>
+          <button className="btn sm ghost" onClick={async () => { if (await guard()) refresh(); }} title="Refresh">↻</button>
           {shownRows.length > 0 && <button className="btn sm ghost" onClick={() => downloadText(`${table}-${stamp()}.csv`, '﻿' + toCsv(shownRows), 'text/csv')} title="Current page as CSV">CSV</button>}
         </div>
       </div>
@@ -284,7 +321,7 @@ function DataTab({ conn, table, info, onChanged }: TabProps) {
               const ok = await commit([{ kind: 'insert', values }], 'Row added');
               if (ok) {
                 if (form.key) { setInserts((l) => l.filter((k) => k !== form.key)); setEdits((e) => { const n = { ...e }; delete n[form.key!]; return n; }); }
-                load(); onChanged();
+                refresh(); onChanged();
               }
               return ok;
             }
@@ -294,7 +331,7 @@ function DataTab({ conn, table, info, onChanged }: TabProps) {
           }}
           onDelete={readOnly || form.isNew ? undefined : async () => {
             const ok = await commit([{ kind: 'delete', ...refOf(form.key!) }], 'Row deleted');
-            if (ok) { load(); onChanged(); }
+            if (ok) { refresh(); onChanged(); }
             return ok;
           }}
           onDuplicate={readOnly ? undefined : (values) => setForm({ isNew: true, values })} />

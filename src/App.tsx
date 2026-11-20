@@ -1,20 +1,26 @@
+import { lazy } from 'react';
 import { HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import Layout from './components/Layout';
 import { ToastProvider } from './components/ui';
 import UpdateBanner from './components/UpdateBanner';
-import AboutPage from './pages/AboutPage';
 import ConnectionsPage from './pages/ConnectionsPage';
-import ConsolePage from './pages/ConsolePage';
-import DatabasesPage from './pages/DatabasesPage';
-import QueryPage from './pages/QueryPage';
-import TableDetailPage from './pages/TableDetailPage';
-import TablesPage from './pages/TablesPage';
-import GoServerPage from './pages/GoServerPage';
-import GoTablePage from './pages/GoTablePage';
-import GoTablesPage from './pages/GoTablesPage';
-import { MongoCollectionPage, MongoDbPage, MongoServerPage } from './pages/MongoPages';
-import RedisPage from './pages/RedisPage';
-import SqlServerPage from './pages/SqlServerPage';
+
+// Pages load on first use: a connection only ever needs the screens of its own
+// kind, so the start screen does not wait for the Mongo, Redis or SQL editors.
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const ConsolePage = lazy(() => import('./pages/ConsolePage'));
+const DatabasesPage = lazy(() => import('./pages/DatabasesPage'));
+const QueryPage = lazy(() => import('./pages/QueryPage'));
+const TableDetailPage = lazy(() => import('./pages/TableDetailPage'));
+const TablesPage = lazy(() => import('./pages/TablesPage'));
+const GoServerPage = lazy(() => import('./pages/GoServerPage'));
+const GoTablePage = lazy(() => import('./pages/GoTablePage'));
+const GoTablesPage = lazy(() => import('./pages/GoTablesPage'));
+const MongoServerPage = lazy(() => import('./pages/MongoPages').then((m) => ({ default: m.MongoServerPage })));
+const MongoDbPage = lazy(() => import('./pages/MongoPages').then((m) => ({ default: m.MongoDbPage })));
+const MongoCollectionPage = lazy(() => import('./pages/MongoPages').then((m) => ({ default: m.MongoCollectionPage })));
+const RedisPage = lazy(() => import('./pages/RedisPage'));
+const SqlServerPage = lazy(() => import('./pages/SqlServerPage'));
 import type { ServerKind } from './api/types';
 import { useConnection } from './store/store';
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { setFetchImpl } from './http';
-import { createTableSql, goRows, primaryKeyColumns, sqlValue, coerceKey, updateRow, deleteRow, insertRow } from './goapi';
+import { createTableSql, goRows, primaryKeyColumns, sqlValue, coerceKey, updateRow, deleteRow, insertRow, statementAt } from './goapi';
 import { extractRows, extractTables, listTables, rowCount, sql } from './bangdb';
 import { normalize } from '../store/store';
 import type { Connection } from './types';
@@ -79,5 +79,28 @@ describe('Go adapter requests', () => {
     await deleteRow(conn(), 'users', { id: 1, name: 'old' }, ['id']);
     expect(lastBody()).toMatchObject({ sql: 'DELETE FROM "users" WHERE "id" = ?', args: [1] });
     expect(() => updateRow(conn(), 'users', { a: 1 }, { a: 2 }, [])).toThrow(/primary key/);
+  });
+});
+
+describe('statementAt', () => {
+  const s = "SELECT 1;\nSELECT ';' AS x;\n\n-- note; here\nUPDATE t SET a = 2";
+  it('finds the statement under the cursor', () => {
+    expect(statementAt(s, 3).text).toBe('SELECT 1');
+    expect(statementAt(s, s.indexOf("AS x")).text).toBe("SELECT ';' AS x");
+    expect(statementAt(s, s.length).text).toBe('-- note; here\nUPDATE t SET a = 2');
+  });
+  it('a cursor right after ; or on a blank line belongs to the statement before', () => {
+    expect(statementAt(s, s.indexOf(';') + 1).text).toBe('SELECT 1');
+    expect(statementAt('SELECT 1;\n\n', 11).text).toBe('SELECT 1');
+    expect(statementAt('SELECT 1;', 9).text).toBe('SELECT 1');
+  });
+  it('honours $$ bodies and block comments', () => {
+    const f = 'CREATE FUNCTION f() RETURNS int AS $$ SELECT 1; $$ LANGUAGE sql;\nSELECT /* ; */ 2';
+    expect(statementAt(f, 10).text).toBe('CREATE FUNCTION f() RETURNS int AS $$ SELECT 1; $$ LANGUAGE sql');
+    expect(statementAt(f, f.length - 1).text).toBe('SELECT /* ; */ 2');
+  });
+  it('returns the range of the statement', () => {
+    const r = statementAt('  SELECT 1 ;  SELECT 2', 20);
+    expect(r).toEqual({ text: 'SELECT 2', start: 14, end: 22 });
   });
 });

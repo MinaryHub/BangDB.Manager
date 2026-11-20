@@ -33,8 +33,9 @@
   --font: "Pretendard Variable", Pretendard, Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "D2Coding", monospace;
 }
+/* light palette: follows the system (theme "auto"), or forced with data-theme */
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme="dark"]) {
     color-scheme: light;
     --bg: #f3f5f9; --bg2: #ffffff; --bg3: #f0f3f8; --bg4: #e6ebf3;
     --border: #e1e6ef; --border-strong: #c9d2e0;
@@ -48,6 +49,20 @@
     --shadow-3: 0 18px 48px rgba(15,23,42,.18);
   }
 }
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f5f9; --bg2: #ffffff; --bg3: #f0f3f8; --bg4: #e6ebf3;
+  --border: #e1e6ef; --border-strong: #c9d2e0;
+  --text: #0f172a; --text2: #334155; --muted: #64748b;
+  --accent: #0b84e0; --accent2: #0b84e0; --accent-soft: rgba(11, 132, 224, .10); --accent-ring: rgba(11, 132, 224, .30);
+  --ok: #16a34a; --ok-soft: rgba(22, 163, 74, .12);
+  --warn: #d97706; --warn-soft: rgba(217, 119, 6, .14);
+  --danger: #dc2626; --danger-soft: rgba(220, 38, 38, .10);
+  --shadow-1: 0 1px 2px rgba(15,23,42,.06), 0 1px 1px rgba(15,23,42,.04);
+  --shadow-2: 0 8px 24px rgba(15,23,42,.10);
+  --shadow-3: 0 18px 48px rgba(15,23,42,.18);
+}
+:root[data-theme="dark"] { color-scheme: dark; }
 
 /* ==========================================================================
    base
@@ -107,6 +122,14 @@ p { margin: 0 0 10px; }
   .sidenav a:hover { background: var(--bg3); color: var(--text); text-decoration: none; }
   .sidenav a.active { background: var(--accent-soft); color: var(--accent); }
   .sidenav a svg { width: 19px; height: 19px; opacity: .9; }
+  .sidenav .quick { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); font-size: 13px; text-align: left; transition: border-color .15s, color .15s; }
+  .sidenav .quick:hover { border-color: var(--border-strong); color: var(--text2); }
+  .sidenav .quick svg { width: 16px; height: 16px; }
+  .sidenav .themebtn { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-size: 13px; text-align: left; }
+  .sidenav .themebtn:hover { background: var(--bg3); color: var(--text); }
+  .sidenav .themebtn svg { width: 17px; height: 17px; }
+  .sidenav .themebtn + .cur { margin-top: 6px; }
+  .narrow-only { display: none !important; }
   .sidenav .cur { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; background: var(--bg3); border: 1px solid var(--border); color: var(--text2); font-size: 12.5px; }
   .sidenav .cur:hover { border-color: var(--border-strong); text-decoration: none; }
   .sidenav .cur .t { min-width: 0; flex: 1; }
@@ -364,3 +387,37 @@ table.grid td.lead input { vertical-align: middle; }
 .updatebar > svg { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
 .updatebar .btn { text-decoration: none; }
 @media (min-width: 900px) { .updatebar { bottom: 22px; left: auto; right: 22px; transform: none; } }
+
+/* ==========================================================================
+   quick open (Ctrl/⌘+K) · keyboard hints · page loading
+   ========================================================================== */
+kbd { display: inline-block; min-width: 18px; padding: 0 5px; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 5px; background: var(--bg3); color: var(--text2); font: 600 10.5px/16px var(--font); text-align: center; }
+kbd + kbd { margin-left: 3px; }
+.page-loading { display: grid; place-items: center; min-height: 40vh; }
+.palette-bg { align-items: flex-start; padding: 10vh 12px 12px; }
+.palette { width: 100%; max-width: 620px; background: var(--bg2); border: 1px solid var(--border-strong); border-radius: var(--r-lg); box-shadow: var(--shadow-3); overflow: hidden; display: flex; flex-direction: column; max-height: 70vh; animation: fade-in .12s ease-out; }
+.palette-in { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--muted); }
+.palette-in svg { width: 18px; height: 18px; flex-shrink: 0; }
+.palette-in input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 15.5px; color: var(--text); padding: 2px 0; }
+.palette-list { overflow-y: auto; padding: 6px; }
+.palette-group { padding: 8px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.palette-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; cursor: pointer; color: var(--text2); }
+.palette-item.on { background: var(--accent-soft); color: var(--text); }
+.palette-item .pi-ico { display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; color: var(--muted); }
+.palette-item .pi-ico > svg { width: 17px; height: 17px; }
+.palette-item.on .pi-ico { color: var(--accent); }
+.palette-item .pi-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.palette-item .pi-hint { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+.palette-foot { display: flex; gap: 16px; padding: 8px 14px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); }
+@media (max-width: 600px) { .palette-foot { display: none; } .palette-bg { padding-top: calc(12px + var(--safe-t)); } }
+
+/* result table: sortable headers, copy on cell */
+table.data th.sortable { cursor: pointer; user-select: none; }
+table.data th.sortable:hover { color: var(--accent); }
+table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data td .null { color: var(--muted); font-style: italic; }
+.more-rows { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--border); }
+.shortcuts { display: grid; gap: 6px; }
+.shortcuts .sc { display: grid; grid-template-columns: minmax(150px, max-content) 1fr; gap: 12px; align-items: center; }
+.shortcuts .keys { white-space: nowrap; }
+@media (max-width: 520px) { .shortcuts .sc { grid-template-columns: 1fr; gap: 2px; } }

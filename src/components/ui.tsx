@@ -119,24 +119,79 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   );
 }
 
-/** Table rendering of an array of flat-ish objects. Nested values shown as JSON. */
+/** Rows a result table draws at first; more are added on request (large results stay responsive). */
+export const RENDER_STEP = 300;
+
+/** Sort comparator for mixed result values: NULLs last, numbers numerically, text naturally. */
+export function compareValues(a: unknown, b: unknown): number {
+  const na = a === null || a === undefined, nb = b === null || b === undefined;
+  if (na || nb) return na === nb ? 0 : na ? 1 : -1;
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  const x = typeof a === 'object' ? JSON.stringify(a) : String(a);
+  const y = typeof b === 'object' ? JSON.stringify(b) : String(b);
+  return x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+/**
+ * Table rendering of an array of flat-ish objects. Nested values shown as JSON.
+ * Headers sort in the browser; long results render RENDER_STEP rows at a time.
+ */
 export function DataTable({ rows, onRowClick }: { rows: Record<string, unknown>[]; onRowClick?: (row: Record<string, unknown>, index: number) => void }) {
+  const [sort, setSort] = useState<{ col: string; desc: boolean } | null>(null);
+  const [limit, setLimit] = useState(RENDER_STEP);
   const cols = useMemo(() => {
     const s = new Set<string>();
     rows.forEach((r) => Object.keys(r).forEach((k) => s.add(k)));
     return Array.from(s);
   }, [rows]);
+  // a different result resets paging and sort; callers often rebuild the same
+  // rows on every render, so this keys on the shape, not the array identity
+  const shape = `${rows.length}\u0000${cols.join('\u0000')}`;
+  useEffect(() => { setLimit(RENDER_STEP); setSort((s) => (s && cols.includes(s.col) ? s : null)); }, [shape]); // eslint-disable-line react-hooks/exhaustive-deps
+  const numeric = useMemo(() => new Set(cols.filter((c) => rows.slice(0, 50).some((r) => typeof r[c] === 'number') && rows.slice(0, 50).every((r) => r[c] == null || typeof r[c] === 'number'))), [cols, rows]);
+  // indexes, so onRowClick still gets the row's position in `rows`
+  const order = useMemo(() => {
+    const idx = rows.map((_, i) => i);
+    if (!sort) return idx;
+    const dir = sort.desc ? -1 : 1;
+    return idx.sort((i, j) => compareValues(rows[i][sort.col], rows[j][sort.col]) * dir || i - j);
+  }, [rows, sort]);
   if (!rows.length) return <div className="empty">No results</div>;
+  const toggle = (c: string) => setSort((s) => (s?.col !== c ? { col: c, desc: false } : !s.desc ? { col: c, desc: true } : null));
   return (
     <div className="tablewrap">
       <table className="data">
-        <thead><tr>{cols.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+        <thead>
+          <tr>
+            {cols.map((c) => (
+              <th key={c} className="sortable" onClick={() => toggle(c)} title="Sort (click again to reverse, a third time to reset)"
+                aria-sort={sort?.col === c ? (sort.desc ? 'descending' : 'ascending') : undefined}>
+                {c}{sort?.col === c && (sort.desc ? ' ▼' : ' ▲')}
+              </th>
+            ))}
+          </tr>
+        </thead>
         <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} onClick={onRowClick ? () => onRowClick(r, i) : undefined} style={onRowClick ? { cursor: 'pointer' } : undefined}>{cols.map((c) => <td key={c} title={fmt(r[c])}>{fmt(r[c])}</td>)}</tr>
-          ))}
+          {order.slice(0, limit).map((i) => {
+            const r = rows[i];
+            return (
+              <tr key={i} onClick={onRowClick ? () => onRowClick(r, i) : undefined} style={onRowClick ? { cursor: 'pointer' } : undefined}>
+                {cols.map((c) => {
+                  const v = r[c];
+                  return <td key={c} className={numeric.has(c) ? 'num' : undefined} title={fmt(v)}>{v === null ? <span className="null">NULL</span> : fmt(v)}</td>;
+                })}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
+      {rows.length > limit && (
+        <div className="more-rows">
+          Showing {limit.toLocaleString()} of {rows.length.toLocaleString()} rows
+          <button className="btn sm" onClick={() => setLimit((l) => l + RENDER_STEP * 3)}>Show more</button>
+          <button className="btn sm ghost" onClick={() => setLimit(rows.length)}>Show all</button>
+        </div>
+      )}
     </div>
   );
 }

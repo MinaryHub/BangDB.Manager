@@ -23,11 +23,43 @@ export function literal(v: unknown): string {
 
 // ---------- transport ----------
 
-export const goQuery = (c: Connection, sql: string, args?: unknown[] | Record<string, unknown>, extra: Record<string, unknown> = {}) =>
-  c.db ? gw<GoQueryResponse>(c, 'query', { sql, args, ...extra }) : call<GoQueryResponse>(c, 'goQuery', { body: { sql, args, ...extra } });
+export async function goQuery(c: Connection, sql: string, args?: unknown[] | Record<string, unknown>, extra: Record<string, unknown> = {}) {
+  const r = await (c.db ? gw<GoQueryResponse>(c, 'query', { sql, args, ...extra }) : call<GoQueryResponse>(c, 'goQuery', { body: { sql, args, ...extra } }));
+  if (DDL.test(sql)) invalidateTables(c);
+  return r;
+}
 
-export const goTables = (c: Connection) =>
-  c.db ? gw<{ tables: GoTableInfo[]; count: number }>(c, 'tables') : call<{ tables: GoTableInfo[]; count: number }>(c, 'goTables');
+export async function goTables(c: Connection) {
+  const r = await (c.db ? gw<{ tables: GoTableInfo[]; count: number }>(c, 'tables') : call<{ tables: GoTableInfo[]; count: number }>(c, 'goTables'));
+  if (r.ok) tablesCache.set(cacheKey(c), { at: Date.now(), tables: Promise.resolve(r.data.tables) });
+  return r;
+}
+
+// ---------- table list cache ----------
+// The SQL console's schema panel and the quick-open palette need the table
+// list often; it is reused for a minute and dropped after any statement that
+// may change the schema (over-matching only costs a refetch).
+
+const TABLES_TTL = 60_000;
+const DDL = /\b(CREATE|DROP|ALTER|RENAME)\b/i;
+const tablesCache = new Map<string, { at: number; tables: Promise<GoTableInfo[] | null> }>();
+const cacheKey = (c: Connection) => `${c.id}\u0000${c.db?.database ?? ''}`;
+
+/** Forget the cached table lists of a connection (every database of it). */
+export function invalidateTables(c: Connection) {
+  for (const k of [...tablesCache.keys()]) if (k.startsWith(`${c.id}\u0000`)) tablesCache.delete(k);
+}
+
+/** Tables and views, from the cache when fresh; null when the server could not be asked. */
+export function cachedTables(c: Connection, maxAgeMs = TABLES_TTL): Promise<GoTableInfo[] | null> {
+  const k = cacheKey(c);
+  const hit = tablesCache.get(k);
+  if (hit && Date.now() - hit.at < maxAgeMs) return hit.tables;
+  const tables = goTables(c).then((r) => (r.ok ? r.data.tables : null));
+  tablesCache.set(k, { at: Date.now(), tables });
+  tables.then((t) => { if (!t && tablesCache.get(k)?.tables === tables) tablesCache.delete(k); });
+  return tables;
+}
 export const goTable = (c: Connection, table: string) => (c.db ? gw<GoTableInfo>(c, 'table', { table }) : call<GoTableInfo>(c, 'goTable', { params: { table } }));
 export const goStats = (c: Connection) => (c.db ? gw(c, 'stats') : call(c, 'goStats'));
 export const goHealth = (c: Connection) => (c.db ? gw<{ ok: boolean; version: string }>(c, 'health') : call<{ ok: boolean; version: string }>(c, 'goHealth'));
@@ -44,6 +76,7 @@ export async function execStatements(c: Connection, stmts: (string | Stmt)[]): P
   const list = stmts.map((s) => (typeof s === 'string' ? { sql: s, args: [] } : { sql: s.sql, args: s.args ?? [] }));
   if (c.db) {
     const r = await gw<{ results: GoQueryResponse[] }>(c, 'batch', { statements: list });
+    if (list.some((x) => DDL.test(x.sql))) invalidateTables(c);
     const results = r.ok ? r.data.results : [];
     return { ...r, data: (r.ok ? { ...(results[results.length - 1] ?? EMPTY), rows_affected: results.reduce((n, x) => n + (x.rows_affected ?? 0), 0) } : r.data) as GoQueryResponse };
   }
@@ -528,6 +561,60 @@ export function splitSql(script: string): string[] {
   }
   if (cur.trim()) out.push(cur.trim());
   return out;
+}
+
+/** Offsets of the top-level `;` in a script (quotes, comments and $$ bodies skipped). */
+function separators(script: string): number[] {
+  const out: number[] = [];
+  const n = script.length;
+  for (let i = 0; i < n; i++) {
+    const ch = script[i], next = script[i + 1];
+    if (ch === "'" || ch === '"' || ch === '`') {
+      let j = i + 1;
+      while (j < n && !(script[j] === ch && script[j + 1] !== ch)) j += script[j] === ch ? 2 : 1;
+      i = j;
+    } else if (ch === '$' && /^\$(?:[A-Za-z_]\w*)?\$/.test(script.slice(i, i + 64))) {
+      const tag = /^\$(?:[A-Za-z_]\w*)?\$/.exec(script.slice(i, i + 64))![0];
+      const end = script.indexOf(tag, i + tag.length);
+      i = end < 0 ? n : end + tag.length - 1;
+    } else if (ch === '-' && next === '-') {
+      const j = script.indexOf('\n', i);
+      i = j < 0 ? n : j;
+    } else if (ch === '/' && next === '*') {
+      const j = script.indexOf('*/', i + 2);
+      i = j < 0 ? n : j + 1;
+    } else if (ch === ';') out.push(i);
+  }
+  return out;
+}
+
+/**
+ * The statement the cursor is in (for "run current statement"): the text
+ * between the surrounding top-level semicolons. A cursor right after a `;`
+ * or on a blank line after one belongs to the statement before it.
+ */
+export function statementAt(script: string, cursor: number): { text: string; start: number; end: number } {
+  const seps = separators(script);
+  const bounds: [number, number][] = [];
+  let from = 0;
+  for (const s of seps) { bounds.push([from, s]); from = s + 1; }
+  bounds.push([from, script.length]);
+  const hasCode = ([a, b]: [number, number]) => splitSql(script.slice(a, b)).length > 0;
+  let k = bounds.findIndex(([a, b]) => cursor >= a && cursor <= b);
+  if (k < 0) k = bounds.length - 1;
+  if (k > 0 && cursor === bounds[k][0] && hasCode(bounds[k - 1])) k--; // just after the `;`
+  if (!hasCode(bounds[k])) {
+    // blank/comment-only piece: take the nearest statement before, else after
+    let j = k - 1;
+    while (j >= 0 && !hasCode(bounds[j])) j--;
+    if (j < 0) { j = k + 1; while (j < bounds.length && !hasCode(bounds[j])) j++; }
+    if (j >= 0 && j < bounds.length) k = j;
+  }
+  const [a, b] = bounds[k];
+  const raw = script.slice(a, b);
+  const lead = raw.length - raw.trimStart().length;
+  const text = raw.trim();
+  return { text, start: a + lead, end: a + lead + text.length };
 }
 
 /** Statements an import skips: SQLite dump boilerplate and transaction control. */

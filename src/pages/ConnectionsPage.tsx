@@ -9,11 +9,11 @@ import type { AuthMode, Connection, DbParams, EndpointDef, EndpointKey, HttpMeth
 import { TopBar } from '../components/Layout';
 import { EmptyState, Field, Modal, describeResult, useConfirm, useToast } from '../components/ui';
 import { Icons, KindBadge } from '../components/kinds';
-import { isGatewayKind, newId, normalize, store, useStore } from '../store/store';
+import { isGatewayKind, newId, normalize, store, useConnections } from '../store/store';
 import { isElectron } from '../platform';
 
 export default function ConnectionsPage() {
-  const { connections } = useStore();
+  const connections = useConnections();
   const [editing, setEditing] = useState<{ conn: Connection; isNew: boolean } | null>(null);
   const nav = useNavigate();
   const toast = useToast();
@@ -70,6 +70,7 @@ export default function ConnectionsPage() {
             </div>
             <div className="acts" onClick={(e) => e.stopPropagation()}>
               <button className="btn ghost icon sm" title="Edit" aria-label="Edit" onClick={() => setEditing({ conn: c, isNew: false })}>{Icons.edit}</button>
+              <button className="btn ghost icon sm" title="Duplicate" aria-label="Duplicate" onClick={() => setEditing({ conn: { ...c, id: newId(), name: `${c.name} (copy)`, createdAt: Date.now() }, isNew: true })}>{Icons.copy}</button>
               <button className="btn ghost icon sm danger" title="Delete" aria-label="Delete" onClick={async () => { if (await confirm(`Delete the connection "${c.name}"? (Server data is not deleted)`)) { store.removeConnection(c.id); toast('Connection deleted'); } }}>{Icons.trash}</button>
             </div>
             <span className="chev">{Icons.chevron}</span>

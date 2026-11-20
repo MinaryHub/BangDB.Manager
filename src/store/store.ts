@@ -142,9 +142,25 @@ export function useStore(): State {
   return useSyncExternalStore(subscribe, () => state, () => state);
 }
 
+// Slices: every API call appends to the request log, so components that only
+// read connections must not subscribe to the whole state (they would
+// re-render on each request).
+const getConnections = () => state.connections;
+const getLog = () => state.log;
+
+/** Saved connections; re-renders only when they change. */
+export function useConnections(): Connection[] {
+  return useSyncExternalStore(subscribe, getConnections, getConnections);
+}
+
+/** Recent requests (REST console). */
+export function useLog(): RequestLogEntry[] {
+  return useSyncExternalStore(subscribe, getLog, getLog);
+}
+
 export function useConnection(id: string | undefined): Connection | undefined {
-  const { connections } = useStore();
-  return connections.find((c) => c.id === id);
+  const connections = useConnections();
+  return useMemo(() => connections.find((c) => c.id === id), [connections, id]);
 }
 
 /**

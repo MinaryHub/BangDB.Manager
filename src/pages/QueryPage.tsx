@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { extractRows, sql } from '../api/bangdb';
 import { downloadText, toCsv } from '../api/data';
 import { dialectOf, isSqlKind, type Dialect } from '../api/dialect';
-import { errorText, goQuery, goTables } from '../api/goapi';
+import { cachedTables, errorText, goQuery, invalidateTables, statementAt } from '../api/goapi';
 import type { ApiResult, Connection, GoQueryResponse, GoTableInfo } from '../api/types';
-import { TopBar } from '../components/Layout';
+import { MOD_KEY, TopBar } from '../components/Layout';
 import { DataTable, JsonOut, ResultBadge, describeResult } from '../components/ui';
 import { useDbConnection } from '../store/store';
 
@@ -99,7 +99,9 @@ export default function QueryPage() {
   const [args, setArgs] = useState('');
   const [limit, setLimit] = useState(1000);
   const [argErr, setArgErr] = useState('');
+  const [schemaVer, setSchemaVer] = useState(0);
   const ta = useRef<HTMLTextAreaElement>(null);
+  const rows = useMemo(() => (res?.ok ? extractRows(res.data) : []), [res]);
   if (!conn) return <div className="empty">Connection not found.</div>;
 
   function insert(text: string) {
@@ -111,10 +113,17 @@ export default function QueryPage() {
     requestAnimationFrame(() => { el.focus(); el.setSelectionRange(a + text.length, a + text.length); });
   }
 
-  async function run(prefix = '') {
+  /** Run the selection (or everything); `current` runs only the statement under the cursor. */
+  async function run(prefix = '', current = false) {
     if (!conn) return;
     const el = ta.current;
-    const sel = el && el.selectionEnd > el.selectionStart ? stmt.slice(el.selectionStart, el.selectionEnd) : stmt;
+    let sel = el && el.selectionEnd > el.selectionStart ? stmt.slice(el.selectionStart, el.selectionEnd) : stmt;
+    if (current && el && el.selectionEnd === el.selectionStart) {
+      const at = statementAt(stmt, el.selectionStart);
+      sel = at.text;
+      // show what runs: select it, as editors do
+      if (at.text) el.setSelectionRange(at.start, at.end);
+    }
     const s = sel.trim();
     if (!s) return;
     setBusy(true); setArgErr('');
@@ -127,22 +136,42 @@ export default function QueryPage() {
       r = await goQuery(conn, prefix + s, a as unknown[] | undefined, { limit });
     } else r = await sql(conn, db, s);
     setRes(r); setBusy(false);
+    if (r.ok && /\b(CREATE|DROP|ALTER|RENAME)\b/i.test(s)) setSchemaVer((v) => v + 1);
     const h = [s, ...hist.filter((x) => x !== s)].slice(0, 50);
     setHist(h); try { localStorage.setItem(HIST_KEY, JSON.stringify(h)); } catch { /* ignore */ }
   }
 
+  /** Ctrl+Enter runs, Ctrl+Shift+Enter runs the statement at the cursor, Tab / Shift+Tab indent. */
+  function onEditorKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run('', e.shiftKey); return; }
+    if (e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey) return;
+    const el = e.currentTarget;
+    const a = el.selectionStart, b = el.selectionEnd;
+    const lineStart = stmt.lastIndexOf('\n', a - 1) + 1;
+    e.preventDefault();
+    if (!e.shiftKey && a === b) { insert('  '); return; }
+    // indent / outdent every selected line
+    const block = stmt.slice(lineStart, b);
+    const lines = block.split('\n');
+    const next = e.shiftKey ? lines.map((l) => l.replace(/^ {1,2}|^\t/, '')) : lines.map((l) => `  ${l}`);
+    const out = next.join('\n');
+    const firstDelta = next[0].length - lines[0].length;
+    setStmt(stmt.slice(0, lineStart) + out + stmt.slice(b));
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(Math.max(lineStart, a + firstDelta), b + out.length - block.length); });
+  }
+
   const g = isGo && res?.ok ? (res.data as GoQueryResponse) : null;
-  const rows = res?.ok ? extractRows(res.data) : [];
   const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 
   const editor = (
     <div>
       <div className="field" style={{ marginBottom: 8 }}>
         <textarea ref={ta} className="mono" value={stmt} onChange={(e) => setStmt(e.target.value)} spellCheck={false} rows={8} style={{ minHeight: 160 }}
-          onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(); } }} placeholder="SELECT * FROM mytable WHERE age > 30 LIMIT 20" />
+          onKeyDown={onEditorKey} placeholder="SELECT * FROM mytable WHERE age > 30 LIMIT 20" />
       </div>
       <div className="toolbar">
-        <button className="btn primary" onClick={() => run()} disabled={busy}>{busy ? 'Running…' : 'Run (Ctrl+Enter)'}</button>
+        <button className="btn primary" onClick={() => run()} disabled={busy} title="Runs the selection, or the whole editor">{busy ? 'Running…' : `Run (${MOD_KEY}+Enter)`}</button>
+        <button className="btn sm" onClick={() => run('', true)} disabled={busy} title={`Runs only the statement the cursor is in (${MOD_KEY}+Shift+Enter)`}>Run statement</button>
         {isGo && d.explain && <button className="btn sm" onClick={() => run(d.explain!.plan)} disabled={busy} title="Execution plan">{d.explain.plan.trim()}</button>}
         {isGo && d.explain?.analyze && <button className="btn sm" onClick={() => run(d.explain!.analyze!)} disabled={busy} title="Actually run and show rows and time per step">{d.explain.analyze.trim()}</button>}
         {isGo && (
@@ -168,7 +197,7 @@ export default function QueryPage() {
           {argErr && <p className="danger small">{argErr}</p>}
         </details>
       )}
-      <p className="muted small" style={{ margin: '4px 0 10px' }}>Select part of the text to run only that part. Separate statements with ; — the last result is shown{d.id === 'bangdb' ? '. BEGIN … COMMIT within one request runs as a transaction' : ` (run in a single ${d.label} session)`}.</p>
+      <p className="muted small" style={{ margin: '4px 0 10px' }}>Select part of the text to run only that part, or use Run statement for the one at the cursor. Separate statements with ; — the last result is shown{d.id === 'bangdb' ? '. BEGIN … COMMIT within one request runs as a transaction' : ` (run in a single ${d.label} session)`}.</p>
 
       {res && !res.ok && <div className="card danger">{isGo ? errorText(res) : describeResult(res)}</div>}
       {res?.ok && (
@@ -189,20 +218,32 @@ export default function QueryPage() {
   return (
     <>
       <TopBar title="SQL console" crumbs={[{ to: `/c/${conn.id}/dbs`, label: conn.name }, { to: `/c/${conn.id}/db/${encodeURIComponent(db)}`, label: conn.kind === 'go' || conn.kind === 'sqlite' ? 'Tables' : db }]} />
-      {isGo ? <div className="split"><SchemaPanel conn={conn} d={d} onInsert={insert} onSelect={(t) => setStmt(d.page(`SELECT * FROM ${d.qt(t)}`, '', 100, 0))} />{editor}</div> : editor}
+      {isGo ? <div className="split"><SchemaPanel conn={conn} d={d} version={schemaVer} onInsert={insert} onSelect={(t) => setStmt(d.page(`SELECT * FROM ${d.qt(t)}`, '', 100, 0))} />{editor}</div> : editor}
       {!isGo && <p className="muted small" style={{ marginTop: 12 }}>Sent to POST /db/{db}/query as {'{"sql": "..."}'}. Follows BangDB's SQL-like syntax (select/where/limit, etc.).</p>}
     </>
   );
 }
 
-function SchemaPanel({ conn, d, onInsert, onSelect }: { conn: Connection; d: Dialect; onInsert: (t: string) => void; onSelect: (table: string) => void }) {
+function SchemaPanel({ conn, d, version, onInsert, onSelect }: { conn: Connection; d: Dialect; version: number; onInsert: (t: string) => void; onSelect: (table: string) => void }) {
   const [tables, setTables] = useState<GoTableInfo[]>([]);
-  useEffect(() => { goTables(conn).then((r) => r.ok && setTables(r.data.tables)); }, [conn]);
+  const [filter, setFilter] = useState('');
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    cachedTables(conn).then((t) => { if (alive && t) setTables(t); });
+    return () => { alive = false; };
+  }, [conn, tick, version]);
+  const f = filter.trim().toLowerCase();
+  const shown = f ? tables.filter((t) => t.name.toLowerCase().includes(f) || (t.columns ?? []).some((c) => c.name.toLowerCase().includes(f))) : tables;
   return (
     <div className="schema">
-      <div className="muted small" style={{ padding: '2px 6px 6px' }}>Schema — click a name to insert it at the cursor</div>
-      {tables.map((t) => (
-        <details key={t.name}>
+      <div className="row" style={{ gap: 4, padding: '0 2px 6px' }}>
+        <input type="search" className="inp grow" style={{ minHeight: 30, padding: '4px 8px', fontSize: 12.5 }} placeholder={`Filter ${tables.length} tables / columns`} value={filter} onChange={(e) => setFilter(e.target.value)} />
+        <button className="btn sm ghost icon" title="Reload schema" aria-label="Reload schema" onClick={() => { invalidateTables(conn); setTick((x) => x + 1); }}>↻</button>
+      </div>
+      <div className="muted small" style={{ padding: '2px 6px 6px' }}>Click a name to insert it at the cursor</div>
+      {shown.map((t) => (
+        <details key={t.name} open={!!f && (t.columns ?? []).some((c) => c.name.toLowerCase().includes(f)) ? true : undefined}>
           <summary>
             <span onClick={(e) => { e.preventDefault(); onInsert(d.qt(t.name)); }} title="Insert name">{t.name}</span>
             {t.kind === 'view' && <span className="badge" style={{ marginLeft: 6 }}>View</span>}
@@ -213,6 +254,7 @@ function SchemaPanel({ conn, d, onInsert, onSelect }: { conn: Connection; d: Dia
           ))}
         </details>
       ))}
+      {f && !shown.length && <div className="muted small" style={{ padding: 6 }}>No match</div>}
     </div>
   );
 }
