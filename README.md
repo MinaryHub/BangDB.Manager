@@ -5,7 +5,7 @@
 
 > *A cross-platform database manager for BangDB, PostgreSQL, MySQL/MariaDB, SQL Server, SQLite, MongoDB and Redis — edit tables like a spreadsheet, run SQL, change schemas, import, export and back up, with the same app on Windows, macOS, Linux, Android and the web.* ([English summary](#english))
 
-![BangDB Manager — 테이블 데이터를 바로 편집](./screenshots/desktop-1920x1080/01-table-data.png)
+![BangDB Manager — 테이블 데이터를 바로 편집](./screenshots/ko/desktop-1920x1080/01-table-data.png)
 
 ## 다운로드
 
@@ -34,30 +34,31 @@
 - **어디서나** — 데스크톱 앱, Android 앱, 설치형 웹앱(PWA). 데스크톱 앱이 같은 Wi-Fi 의 휴대폰에 앱을 그대로 제공.
 - **자동 업데이트와 버전 관리** — 백그라운드 업데이트, 자동 확인 켜기/끄기, 업데이트 후 "새로운 점", 버전 기록과 이전 버전 다시 설치.
 - **문의 · 후원** — 앱에서 바로 버그 신고·기능 요청·질문(GitHub Issues), GitHub Sponsors 로 후원.
+- **한국어 / English** — 화면·메뉴·안내 문구를 한국어와 영어로 바로 전환(사이드바의 언어 버튼, 정보 → 화면, Ctrl/⌘+K). 기본은 영어이고 고른 언어는 기기에 저장됩니다.
 - **개인정보** — 연결 정보는 이 기기에만 저장. 다크 / 라이트 / 시스템 테마.
 
 ## 스크린샷
 
 | | |
 |---|---|
-| ![SQL 콘솔](./screenshots/desktop-1920x1080/02-sql-console.png) | ![테이블 목록](./screenshots/desktop-1920x1080/03-tables.png) |
+| ![SQL 콘솔](./screenshots/ko/desktop-1920x1080/02-sql-console.png) | ![테이블 목록](./screenshots/ko/desktop-1920x1080/03-tables.png) |
 | SQL 콘솔 — 스키마 패널, 문장 단위 실행, 결과 정렬 | 테이블 목록 — 행 수(큰 테이블은 ≈ 추정), 뷰 |
-| ![빠른 열기](./screenshots/desktop-1920x1080/04-quick-open.png) | ![구조 편집](./screenshots/desktop-1920x1080/05-schema.png) |
+| ![빠른 열기](./screenshots/ko/desktop-1920x1080/04-quick-open.png) | ![구조 편집](./screenshots/ko/desktop-1920x1080/05-schema.png) |
 | 빠른 열기 (Ctrl/⌘+K) | 구조 편집 — 컬럼·제약 조건 |
-| ![서버 목록](./screenshots/desktop-1920x1080/06-servers.png) | ![서버 개요](./screenshots/desktop-1920x1080/07-server-overview.png) |
+| ![서버 목록](./screenshots/ko/desktop-1920x1080/06-servers.png) | ![서버 개요](./screenshots/ko/desktop-1920x1080/07-server-overview.png) |
 | 서버 목록 — 종류별 아이콘, 연결 상태 | BangDB 서버 개요 — 통계, 덤프/복원, 유지 보수 |
-| ![업데이트·문의·후원](./screenshots/desktop-1920x1080/08-about-updates-support.png) | ![버전 기록](./screenshots/desktop-1920x1080/09-version-history.png) |
+| ![업데이트·문의·후원](./screenshots/ko/desktop-1920x1080/08-about-updates-support.png) | ![버전 기록](./screenshots/ko/desktop-1920x1080/09-version-history.png) |
 | 정보 — 업데이트, 문의, 후원 | 버전 기록 — 릴리즈 노트, 이전 버전 설치 |
 
 <p>
-<img src="./screenshots/android-phone-1080x1920/01-servers.png" width="19%" alt="서버 목록 (휴대폰)">
-<img src="./screenshots/android-phone-1080x1920/02-table-data.png" width="19%" alt="테이블 데이터 (휴대폰)">
-<img src="./screenshots/android-phone-1080x1920/03-sql-console.png" width="19%" alt="SQL 콘솔 (휴대폰)">
-<img src="./screenshots/android-phone-1080x1920/05-quick-open.png" width="19%" alt="빠른 열기 (휴대폰)">
-<img src="./screenshots/android-phone-1080x1920/06-about.png" width="19%" alt="정보 (휴대폰)">
+<img src="./screenshots/ko/android-phone-1080x1920/01-servers.png" width="19%" alt="서버 목록 (휴대폰)">
+<img src="./screenshots/ko/android-phone-1080x1920/02-table-data.png" width="19%" alt="테이블 데이터 (휴대폰)">
+<img src="./screenshots/ko/android-phone-1080x1920/03-sql-console.png" width="19%" alt="SQL 콘솔 (휴대폰)">
+<img src="./screenshots/ko/android-phone-1080x1920/05-quick-open.png" width="19%" alt="빠른 열기 (휴대폰)">
+<img src="./screenshots/ko/android-phone-1080x1920/06-about.png" width="19%" alt="정보 (휴대폰)">
 </p>
 
-스토어·앱 소개 사이트 등록용 원본 이미지는 [`screenshots/`](./screenshots) 에 있습니다 (데스크톱 1920×1080, 휴대폰 1080×1920, 기능 그래픽 1024×500).
+스토어·앱 소개 사이트 등록용 원본 이미지는 [`screenshots/`](./screenshots) 에 있습니다 — 한국어(`ko/`)·영어(`en/`) 화면 각각 데스크톱 1920×1080, 휴대폰 1080×1920, 그리고 기능 그래픽 1024×500.
 
 ## 지원 데이터베이스
 
@@ -90,13 +91,15 @@
 
 ## English
 
+![BangDB Manager](./screenshots/en/desktop-1920x1080/01-table-data.png)
+
 **BangDB Manager** is a free database manager (source on GitHub) for **BangDB, PostgreSQL, MySQL/MariaDB, SQL Server, SQLite, MongoDB and Redis**. One app runs on Windows, macOS, Linux, Android and in the browser (installable PWA).
 
 - Spreadsheet-style table editing with batched, transactional saves; form editor; search, filters, sorting and paging
 - SQL console with a schema panel, run-statement-at-cursor, EXPLAIN, parameters, history and CSV/JSON export
 - Schema tools: create tables and views, add/alter/rename/drop columns, indexes, DDL, copy and rename tables
 - Import CSV/TSV/JSON/JSONL, export CSV/JSON/SQL, full SQL dump and restore (key-based paging for big tables)
-- Quick open (Ctrl/⌘+K), keyboard shortcuts, dark/light/system themes
+- English and Korean UI, switchable at any time; quick open (Ctrl/⌘+K), keyboard shortcuts, dark/light/system themes
 - Automatic updates (desktop installs in the background, web reloads, Android notifies), version history with release notes and older-version downloads
 - Report bugs, request features and ask questions from the app (GitHub Issues); sponsor development on [GitHub Sponsors](https://github.com/sponsors/knoxxr)
 - The desktop app bundles a gateway for PostgreSQL, MySQL, SQL Server, SQLite, MongoDB and Redis, and can serve the app to phones on the same network
@@ -108,7 +111,11 @@
 
 # 개발자 문서
 
-> UI 언어는 영어입니다. 이 문서는 한국어로 유지합니다.
+> UI 는 영어(기본)와 한국어를 지원합니다. 이 문서는 한국어로 유지합니다.
+
+### UI 문구 번역
+
+화면 문구는 영어 원문을 키로 쓰는 `t()` 로 감싸고(`src/i18n/index.ts`), 한국어는 `src/i18n/ko/*.ts` 에 둡니다. 개수에 따라 달라지는 문구는 `tp(n, '{n} row', '{n} rows')`, 상수에 둔 문구는 `tx()` 로 표시하고 보여 줄 때 `t()` 를 부릅니다. `npm test` 가 소스의 모든 문구에 한국어가 있는지, `{자리표시자}` 가 같은지 확인하므로 새 문구를 넣으면 번역도 함께 넣어야 합니다. 한국어 파일은 한국어를 고를 때만 내려받습니다. 데스크톱 앱의 메뉴·대화상자 문구는 `electron/i18n.mjs` 에 있습니다.
 
 ## 빠른 시작 (개발)
 

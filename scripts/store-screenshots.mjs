@@ -3,10 +3,13 @@
 // Desktop 1440×810 @4/3 = 1920×1080, phone 360×640 @3 = 1080×1920.
 // Needs the app on APP_URL (default http://localhost:8080) and the demo servers.
 // RELEASES_JSON=<file> serves a saved GitHub releases list to the version-history page.
+// UI_LANG=ko takes the Korean set (MinaryHub shows screenshots/ko on its Korean page).
 import { chromium } from 'playwright';
 import { mkdirSync, readFileSync } from 'node:fs';
-const OUT = process.argv[2] || 'screenshots';
+const OUT = process.argv[2] || `screenshots/${process.env.UI_LANG === 'ko' ? 'ko' : 'en'}`;
 const ONLY = process.argv[3];
+const LANG = process.env.UI_LANG === 'ko' ? 'ko' : 'en';
+const K = LANG === 'ko';
 const releases = process.env.RELEASES_JSON ? readFileSync(process.env.RELEASES_JSON, 'utf8') : null;
 mkdirSync(`${OUT}/desktop-1920x1080`, { recursive: true });
 mkdirSync(`${OUT}/android-phone-1080x1920`, { recursive: true });
@@ -25,10 +28,11 @@ async function ctxFor(kind, theme) {
     ? { viewport: { width: 360, height: 640 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36' }
     : { viewport: { width: 1440, height: 810 }, deviceScaleFactor: 4 / 3 };
   const ctx = await browser.newContext({ ...opts, colorScheme: theme });
-  await ctx.addInitScript((c) => {
+  await ctx.addInitScript(([c, lang]) => {
+    localStorage.setItem('bangdb-manager.lang', lang);
     localStorage.setItem('bangdb-manager.connections.v1', JSON.stringify(c));
     localStorage.setItem('bangdb-manager.sql-history', JSON.stringify([]));
-  }, CONNS);
+  }, [CONNS, LANG]);
   if (releases) await ctx.route('https://api.github.com/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: releases }));
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
@@ -49,7 +53,7 @@ const want = (n) => !ONLY || n.includes(ONLY);
     await p.keyboard.press('Escape');
     await cell(4, 5).click(); await p.keyboard.press('Control+a'); await p.keyboard.type('gold'); await p.keyboard.press('Enter'); await p.keyboard.press('Escape');
     await p.locator('table.grid tbody tr').nth(7).locator('input[type=checkbox]').check();
-    await p.getByRole('button', { name: /Delete selected/ }).click();
+    await p.getByRole('button', { name: K ? /선택 삭제/ : /Delete selected/ }).click();
     await shot(p, 'desktop-1920x1080/01-table-data');
   }
   if (want('03')) {
@@ -83,18 +87,18 @@ const want = (n) => !ONLY || n.includes(ONLY);
   }
   if (want('05')) {
     await p.goto(`${B}/c/go/db/main/t/orders`); await p.locator('.tabs').waitFor(); await settle(p);
-    await p.getByRole('button', { name: 'Schema' }).click(); await settle(p);
+    await p.getByRole('button', { name: K ? '구조' : 'Schema' }).click(); await settle(p);
     await shot(p, 'desktop-1920x1080/05-schema');
   }
   if (want('08')) {
-    await p.goto(`${B}/about`); await p.getByText('Help & feedback').waitFor(); await settle(p, 1200);
-    await p.getByRole('button', { name: 'Check for updates' }).click(); await p.getByText(/up to date/).waitFor({ timeout: 15000 }).catch(() => {});
+    await p.goto(`${B}/about`); await p.getByText(K ? '도움말 · 피드백' : 'Help & feedback').waitFor(); await settle(p, 1200);
+    await p.getByRole('button', { name: K ? '업데이트 확인' : 'Check for updates' }).click(); await p.getByText(K ? /최신 버전/ : /up to date/).waitFor({ timeout: 15000 }).catch(() => {});
     await shot(p, 'desktop-1920x1080/08-about-updates-support');
   }
   if (want('10')) {
-    await p.goto(`${B}/about`); await p.getByRole('button', { name: 'Report a bug' }).click();
-    await p.locator('.modal input').first().fill('Saving a row in a SQL Server table fails');
-    await p.locator('.modal textarea').fill('After editing two cells and pressing Ctrl+S the save bar shows "Save failed — nothing was applied: conversion failed". Other tables save fine.');
+    await p.goto(`${B}/about`); await p.getByRole('button', { name: K ? '버그 신고' : 'Report a bug' }).click();
+    await p.locator('.modal input').first().fill(K ? 'SQL Server 테이블에서 행 저장이 실패합니다' : 'Saving a row in a SQL Server table fails');
+    await p.locator('.modal textarea').fill(K ? '셀 두 개를 고치고 Ctrl+S 를 누르면 저장 바에 "저장 실패 — 아무것도 적용되지 않았습니다: conversion failed" 가 나옵니다. 다른 테이블은 잘 저장됩니다.' : 'After editing two cells and pressing Ctrl+S the save bar shows "Save failed — nothing was applied: conversion failed". Other tables save fine.');
     await shot(p, 'desktop-1920x1080/10-report-issue');
   }
   await ctx.close();
@@ -108,13 +112,13 @@ const want = (n) => !ONLY || n.includes(ONLY);
   if (want('p3')) {
     await p.goto(`${B}/c/pg/db/shop/query`); await p.locator('textarea').waitFor();
     await p.locator('textarea').fill(`SELECT status, COUNT(*) AS n,\n       SUM(total) AS revenue\nFROM orders\nGROUP BY status\nORDER BY n DESC;`);
-    await p.getByRole('button', { name: /^Run \(/ }).click(); await p.locator('table.data').waitFor(); await settle(p);
+    await p.getByRole('button', { name: K ? /^실행 \(/ : /^Run \(/ }).click(); await p.locator('table.data').waitFor(); await settle(p);
     await p.evaluate(() => { const el = document.querySelector('.split textarea, textarea'); const y = el.getBoundingClientRect().top + window.scrollY - 70; window.scrollTo(0, y); }); await settle(p, 300);
     await shot(p, 'android-phone-1080x1920/03-sql-console');
   }
   if (want('p4')) { await p.goto(`${B}/c/pg/db/shop`); await p.locator('.item .title', { hasText: 'orders' }).waitFor(); await settle(p, 1200); await shot(p, 'android-phone-1080x1920/04-tables'); }
   if (want('p5')) { await p.goto(`${B}/c/pg/db/shop`); await p.locator('.item').first().waitFor(); await p.locator('.topbar .narrow-only').click(); await p.locator('.palette input').fill('rev'); await settle(p, 300); await shot(p, 'android-phone-1080x1920/05-quick-open'); await p.keyboard.press('Escape'); }
-  if (want('p6')) { await p.goto(`${B}/connections`); await p.reload(); await p.goto(`${B}/about`); await p.getByText('Help & feedback').waitFor(); await settle(p, 1000); await shot(p, 'android-phone-1080x1920/06-about'); }
+  if (want('p6')) { await p.goto(`${B}/connections`); await p.reload(); await p.goto(`${B}/about`); await p.getByText(K ? '도움말 · 피드백' : 'Help & feedback').waitFor(); await settle(p, 1000); await shot(p, 'android-phone-1080x1920/06-about'); }
   await ctx.close();
 }
 console.log('errors', errors);

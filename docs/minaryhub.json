@@ -40,14 +40,14 @@
       "homepage": "https://github.com/knoxxr/BangDB.Manager",
       "icon": "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/public/icon-512.png",
       "screenshots": [
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/desktop-1920x1080/01-table-data.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/desktop-1920x1080/02-sql-console.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/desktop-1920x1080/03-tables.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/desktop-1920x1080/04-quick-open.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/desktop-1920x1080/05-schema.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/desktop-1920x1080/06-servers.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/desktop-1920x1080/08-about-updates-support.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/desktop-1920x1080/09-version-history.png"
+        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/01-table-data.png",
+        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/02-sql-console.png",
+        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/03-tables.png",
+        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/04-quick-open.png",
+        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/05-schema.png",
+        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/06-servers.png",
+        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/08-about-updates-support.png",
+        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/09-version-history.png"
       ],
       "category": "DeveloperApplication",
       "language": "TypeScript",
