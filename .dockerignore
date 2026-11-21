@@ -8,3 +8,4 @@ ios
 .playwright-mcp
 *.log
 *.db
+screenshots
