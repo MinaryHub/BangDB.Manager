@@ -20,6 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Release notes for this version
+        shell: bash
+        run: node scripts/release-notes.mjs "$TAG" > release-notes.md
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
@@ -45,7 +48,7 @@ jobs:
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
           name: BangDB Manager ${{ env.TAG }}
-          body_path: CHANGELOG.md
+          body_path: release-notes.md
           files: out/bangdb-manager-web-${{ env.TAG }}.zip
 
   android:
@@ -53,6 +56,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Release notes for this version
+        shell: bash
+        run: node scripts/release-notes.mjs "$TAG" > release-notes.md
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - uses: actions/setup-java@v4
@@ -71,7 +77,7 @@ jobs:
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
           name: BangDB Manager ${{ env.TAG }}
-          body_path: CHANGELOG.md
+          body_path: release-notes.md
           files: bangdb-manager-${{ env.TAG }}-android-debug.apk
 
   desktop:
@@ -89,6 +95,9 @@ jobs:
             args: --mac
     steps:
       - uses: actions/checkout@v4
+      - name: Release notes for this version
+        shell: bash
+        run: node scripts/release-notes.mjs "$TAG" > release-notes.md
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
@@ -104,7 +113,7 @@ jobs:
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
           name: BangDB Manager ${{ env.TAG }}
-          body_path: CHANGELOG.md
+          body_path: release-notes.md
           files: |
             release/*.exe
             release/*.exe.blockmap

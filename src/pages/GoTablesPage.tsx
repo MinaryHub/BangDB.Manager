@@ -120,7 +120,7 @@ export default function GoTablesPage() {
       <div className="toolbar">
         <input type="search" className="inp filter" placeholder="Search tables and views — Enter opens the first match" value={filter} onChange={(e) => setFilter(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && shown[0]) nav(`${base}/t/${encodeURIComponent(shown[0].name)}`); }} />
-        <span className="muted small">{nT} tables · {tables.length - nT} views</span>
+        <span className="muted small">{plural(nT, 'table')} · {plural(tables.length - nT, 'view')}</span>
         <button className="btn ghost icon sm" onClick={load} disabled={loading} title="Refresh" aria-label="Refresh">{loading ? <span className="spin" /> : Icons.refresh}</button>
       </div>
       {err && <div className="card danger">{err}</div>}

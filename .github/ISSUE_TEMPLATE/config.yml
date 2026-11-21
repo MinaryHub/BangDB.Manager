@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💖 Sponsor BangDB Manager
+    url: https://github.com/sponsors/knoxxr
+    about: Support development on GitHub Sponsors.
+  - name: 📦 Downloads and release notes
+    url: https://github.com/knoxxr/BangDB.Manager/releases
+    about: The newest version and what changed in each one.

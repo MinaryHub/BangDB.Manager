@@ -1,0 +1,27 @@
+name: 💡 Feature request
+description: An idea for something the app should do.
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What would you like?
+      description: Describe the feature and the problem it solves for you.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How do you do it today?
+      description: Workarounds or other tools you use for this now.
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: "0.6.0"
+  - type: textarea
+    id: environment
+    attributes:
+      label: App and system details
+      render: text

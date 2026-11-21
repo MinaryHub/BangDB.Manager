@@ -4,7 +4,9 @@ import { isSqlKind } from '../api/dialect';
 import { cachedTables } from '../api/goapi';
 import type { GoTableInfo } from '../api/types';
 import { useConnections, useDbConnection } from '../store/store';
+import { SPONSOR_URL, openExternal } from '../appinfo';
 import { nextTheme, setTheme, useTheme } from '../theme';
+import { checkForUpdates } from '../update';
 import { Icons, KindBadge, KIND_STYLE } from './kinds';
 
 /** Event that opens the palette from anywhere (buttons outside the layout). */
@@ -21,11 +23,13 @@ export function fuzzyScore(text: string, query: string): number {
   const t = text.toLowerCase(), q = query.toLowerCase().replace(/\s+/g, '');
   if (!q) return 0;
   let score = 0, ti = 0, run = 0;
-  for (const ch of q) {
-    const at = t.indexOf(ch, ti);
+  for (let i = 0; i < q.length; i++) {
+    const at = t.indexOf(q[i], ti);
     if (at < 0) return -1;
-    run = at === ti ? run + 1 : 1;
-    score += run * 2 + (at === 0 || /[\s_./-]/.test(t[at - 1]) ? 3 : 0) - Math.min(at - ti, 5) * 0.2;
+    const wordStart = at === 0 || /[\s_./·-]/.test(t[at - 1]);
+    run = at === ti && i > 0 ? run + 1 : 1;
+    // a jump into the middle of a word ("ord" → spOnsoR Development) is a weak match
+    score += run * 2 + (wordStart ? 3 : 0) - Math.min(at - ti, 5) * 0.2 - (run === 1 && !wordStart ? (i > 0 ? 6 : 2) : 0);
     ti = at + 1;
   }
   return score - t.length * 0.01;
@@ -81,7 +85,13 @@ function Palette({ onClose }: { onClose: () => void }) {
     out.push(
       { id: 'servers', label: 'All servers', group: 'Pages', icon: Icons.server, run: go('/connections') },
       { id: 'about', label: 'About · updates', group: 'Pages', icon: Icons.info, run: go('/about') },
-      { id: 'theme', label: `Theme: ${theme} → ${nextTheme(theme)}`, hint: 'Switch colour theme', group: 'Settings', icon: Icons.theme, run: () => setTheme(nextTheme(theme)) }
+      { id: 'theme', label: `Theme: ${theme} → ${nextTheme(theme)}`, hint: 'Switch colour theme', group: 'Settings', icon: Icons.theme, run: () => setTheme(nextTheme(theme)) },
+      { id: 'update', label: 'Check for updates', group: 'App', icon: Icons.refresh, run: () => { void checkForUpdates(); nav('/about'); onClose(); } },
+      { id: 'versions', label: 'Version history · what\'s new', group: 'App', icon: Icons.history, run: go('/about/versions') },
+      { id: 'bug', label: 'Report a bug', hint: 'GitHub Issues', group: 'App', icon: Icons.bug, run: () => { nav('/about', { state: { feedback: 'bug' } }); onClose(); } },
+      { id: 'feature', label: 'Request a feature', hint: 'GitHub Issues', group: 'App', icon: Icons.bulb, run: () => { nav('/about', { state: { feedback: 'feature' } }); onClose(); } },
+      { id: 'question', label: 'Ask a question', hint: 'GitHub Issues', group: 'App', icon: Icons.help, run: () => { nav('/about', { state: { feedback: 'question' } }); onClose(); } },
+      { id: 'sponsor', label: 'Sponsor development', hint: 'GitHub Sponsors', group: 'App', icon: Icons.heart, run: () => { openExternal(SPONSOR_URL); onClose(); } }
     );
     return out;
   }, [conn, db, tables, connections, theme, nav, onClose]);
@@ -89,7 +99,8 @@ function Palette({ onClose }: { onClose: () => void }) {
   const shown = useMemo(() => {
     if (!q.trim()) return items.slice(0, 60);
     return items
-      .map((it) => ({ it, s: Math.max(fuzzyScore(it.label, q), fuzzyScore(`${it.group} ${it.label}`, q) - 2) }))
+      // the group (server name) counts only when the query has several words, e.g. "prod ord"
+      .map((it) => ({ it, s: /\s/.test(q.trim()) ? Math.max(fuzzyScore(it.label, q), fuzzyScore(`${it.group} ${it.label}`, q) - 2) : fuzzyScore(it.label, q) }))
       .filter((x) => x.s >= 0)
       .sort((a, b) => b.s - a.s)
       .slice(0, 60)

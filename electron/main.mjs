@@ -3,13 +3,16 @@
 // REST servers and PostgreSQL/MySQL/SQL Server/SQLite/MongoDB/Redis work
 // without any extra install, and it can open the same server on the LAN so
 // phones use the app without installing anything.
-import { app, BrowserWindow, Menu, dialog, shell, clipboard, session } from 'electron';
+import { app, BrowserWindow, Menu, dialog, ipcMain, shell, clipboard, session } from 'electron';
 import { randomBytes } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import { createProxyServer, listen } from '../proxy/lib.mjs';
-import { check as checkUpdates, initUpdater, statusLabel } from './updater.mjs';
+import { check as checkUpdates, initUpdater, statusLabel, updateIpc } from './updater.mjs';
+
+const REPO_URL = 'https://github.com/knoxxr/BangDB.Manager';
+const SPONSOR_URL = 'https://github.com/sponsors/knoxxr';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dist = join(here, '..', 'dist');
@@ -112,12 +115,24 @@ function buildMenu() {
       { label: 'Check for updates', click: () => checkUpdates(true) },
       { label: statusLabel(), enabled: false },
       { type: 'separator' },
-      { label: 'GitHub repository', click: () => shell.openExternal('https://github.com/knoxxr/BangDB.Manager') },
-      { label: 'Release notes', click: () => shell.openExternal('https://github.com/knoxxr/BangDB.Manager/releases') },
+      { label: 'Version history', click: () => openInApp('/about/versions') },
+      { label: 'Release notes on GitHub', click: () => shell.openExternal(`${REPO_URL}/releases`) },
+      { type: 'separator' },
+      { label: 'Report a bug or ask a question…', click: () => openInApp('/about') },
+      { label: 'Browse issues', click: () => shell.openExternal(`${REPO_URL}/issues`) },
+      { label: 'Sponsor BangDB Manager ♥', click: () => shell.openExternal(SPONSOR_URL) },
+      { label: 'GitHub repository', click: () => shell.openExternal(REPO_URL) },
       { label: `Version ${app.getVersion()}`, enabled: false }
     ] }
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+/** Show a page of the app (hash route) in the window. */
+function openInApp(route) {
+  if (!win) createWindow();
+  win.webContents.executeJavaScript(`location.hash = ${JSON.stringify(`#${route}`)}`).catch(() => {});
+  win.show();
 }
 
 function createWindow() {
@@ -125,7 +140,7 @@ function createWindow() {
     width: 1120, height: 780, minWidth: 360, minHeight: 480,
     title: 'BangDB Manager', backgroundColor: '#0f172a',
     icon: join(here, '..', 'build', 'icon.png'),
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false }
+    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, preload: join(here, 'preload.cjs') }
   });
   win.loadURL(`http://127.0.0.1:${local.port}/`);
   win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
@@ -141,6 +156,7 @@ app.whenReady().then(async () => {
     app.quit();
     return;
   }
+  updateIpc(ipcMain);
   buildMenu();
   createWindow();
   initUpdater({ getWindow: () => win, onState: () => buildMenu() });

@@ -62,7 +62,7 @@ export default function ConnectionsPage() {
               <div className="sub">{connTarget(c)}</div>
               <div className="tags">
                 <span className="badge">{kindLabel(c.kind)}</span>
-                {c.kind === 'rest' && <span className="badge">{c.databases.length} DBs</span>}
+                {c.kind === 'rest' && <span className="badge">{c.databases.length} {c.databases.length === 1 ? 'DB' : 'DBs'}</span>}
                 {!c.db && <span className="badge">{authLabel(c.auth.mode)}</span>}
                 {c.useProxy && <span className="badge accent">Proxy</span>}
                 {status[c.id] === 'err' && <span className="badge err">Unreachable</span>}

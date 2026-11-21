@@ -4,7 +4,10 @@
 //  - macOS (unsigned build) and Linux deb: electron-updater cannot replace
 //    the app, so we only look up the latest GitHub release and offer the
 //    download page.
-// BANGDB_MANAGER_NO_UPDATE=1 turns everything off.
+// BANGDB_MANAGER_NO_UPDATE=1 turns everything off; the About page's
+// "Check for updates automatically" turns the scheduled checks off.
+// Results of scheduled checks go to the app window (update bar, About page);
+// the Help menu's manual check answers with dialogs.
 import { app, dialog, shell } from 'electron';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -15,7 +18,7 @@ export const REPO = 'knoxxr/BangDB.Manager';
 const RELEASES = `https://github.com/${REPO}/releases/latest`;
 const CHECK_EVERY = 4 * 60 * 60 * 1000;
 
-export const state = { mode: 'off', status: 'idle', version: '', percent: 0, error: '' };
+export const state = { mode: 'off', status: 'idle', version: '', percent: 0, error: '', auto: true, url: '' };
 let onChange = () => {};
 let timer = null;
 let win = () => null;
@@ -28,7 +31,12 @@ export function updateMode() {
   return 'notify';
 }
 
-function set(patch) { Object.assign(state, patch); onChange(state); }
+function set(patch) {
+  Object.assign(state, patch);
+  onChange(state);
+  const w = win();
+  if (w && !w.isDestroyed()) w.webContents.send('update:state', { ...state });
+}
 
 const prefsPath = () => join(app.getPath('userData'), 'updater.json');
 function prefs() { try { return JSON.parse(readFileSync(prefsPath(), 'utf8')); } catch { return {}; } }
@@ -48,45 +56,65 @@ export function compareVersions(a, b) {
 export function initUpdater({ getWindow, onState }) {
   win = getWindow;
   onChange = onState ?? onChange;
-  set({ mode: updateMode() });
+  set({ mode: updateMode(), auto: prefs().auto !== false });
   if (state.mode === 'off') return;
   if (state.mode === 'auto') {
-    autoUpdater.autoDownload = true;
+    autoUpdater.autoDownload = state.auto;
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.logger = null;
     autoUpdater.on('checking-for-update', () => set({ status: 'checking', error: '' }));
-    autoUpdater.on('update-available', (info) => set({ status: 'downloading', version: info.version, percent: 0 }));
+    autoUpdater.on('update-available', (info) => set({ status: autoUpdater.autoDownload ? 'downloading' : 'available', version: info.version, percent: 0, url: RELEASES }));
     autoUpdater.on('update-not-available', (info) => set({ status: 'none', version: info?.version ?? '' }));
     autoUpdater.on('download-progress', (p) => set({ status: 'downloading', percent: Math.round(p.percent) }));
     autoUpdater.on('error', (e) => set({ status: 'error', error: e?.message ?? String(e) }));
-    autoUpdater.on('update-downloaded', (info) => {
-      set({ status: 'downloaded', version: info.version, percent: 100 });
-      dialog.showMessageBox(win(), {
-        type: 'info', message: `BangDB Manager ${info.version} is ready`,
-        detail: 'Restart now to install? If you choose Later, it will be installed when the app closes.',
-        buttons: ['Restart now', 'Later'], defaultId: 0, cancelId: 1
-      }).then((r) => { if (r.response === 0) setImmediate(() => autoUpdater.quitAndInstall()); });
-    });
+    // the app window shows "ready — Restart now"; otherwise it installs when the app closes
+    autoUpdater.on('update-downloaded', (info) => set({ status: 'downloaded', version: info.version, percent: 100 }));
   }
-  setTimeout(() => check(false), 8000);
-  timer = setInterval(() => check(false), CHECK_EVERY);
+  schedule();
   app.on('before-quit', () => clearInterval(timer));
 }
 
+function schedule() {
+  clearInterval(timer);
+  timer = null;
+  if (state.mode === 'off' || !state.auto) return;
+  setTimeout(() => { if (state.auto) check(false); }, 8000);
+  timer = setInterval(() => check(false), CHECK_EVERY);
+}
+
+/** Update controls for the app window (electron/preload.cjs). */
+export function updateIpc(ipcMain) {
+  ipcMain.handle('update:state', () => ({ ...state }));
+  // a check started in the app: results show in the app, not in dialogs; a skipped version counts again
+  ipcMain.handle('update:check', () => check(false, { force: true }));
+  ipcMain.handle('update:install', () => { if (state.status === 'downloaded') setImmediate(() => autoUpdater.quitAndInstall()); else if (state.url) shell.openExternal(state.url); });
+  ipcMain.handle('update:set-auto', (_e, on) => {
+    savePrefs({ ...prefs(), auto: !!on });
+    if (state.mode === 'auto') autoUpdater.autoDownload = !!on;
+    set({ auto: !!on });
+    schedule();
+  });
+  ipcMain.handle('update:skip', (_e, v) => { savePrefs({ ...prefs(), skip: String(v) }); set({ status: 'none' }); });
+}
+
 /** Check now. With manual=true the result is always shown in a dialog. */
-export async function check(manual) {
+export async function check(manual, { force = false } = {}) {
   if (state.mode === 'off') {
     if (manual) dialog.showMessageBox(win(), { type: 'info', message: 'Automatic updates are off', detail: app.isPackaged ? 'The BANGDB_MANAGER_NO_UPDATE environment variable is set.' : 'Not available in development mode.' });
     return;
   }
   if (state.mode === 'auto') {
     try {
+      // with automatic downloads off a manual / in-app check still fetches the update
+      if (manual || force) autoUpdater.autoDownload = true;
       const r = await autoUpdater.checkForUpdates();
+      autoUpdater.autoDownload = state.auto;
       const v = r?.updateInfo?.version;
+      if (!v || compareVersions(v, app.getVersion()) <= 0) set({ status: 'none', version: v ?? '' });
       if (manual && v && compareVersions(v, app.getVersion()) <= 0) {
         dialog.showMessageBox(win(), { type: 'info', message: "You're up to date", detail: `Current version: ${app.getVersion()}` });
       } else if (manual && v) {
-        dialog.showMessageBox(win(), { type: 'info', message: `Downloading ${v}`, detail: 'You will be asked to install once the download finishes.' });
+        dialog.showMessageBox(win(), { type: 'info', message: `Downloading ${v}`, detail: 'When the download finishes, the app shows a Restart button; otherwise it installs when you close the app.' });
       }
     } catch (e) {
       set({ status: 'error', error: e?.message ?? String(e) });
@@ -107,9 +135,10 @@ export async function check(manual) {
       if (manual) dialog.showMessageBox(win(), { type: 'info', message: "You're up to date", detail: `Current version: ${app.getVersion()}` });
       return;
     }
-    set({ status: 'available', version: latest });
     const p = prefs();
-    if (!manual && p.skip === latest) return;
+    set({ status: !manual && !force && p.skip === latest ? 'none' : 'available', version: latest, url: rel.html_url || RELEASES });
+    // scheduled checks and in-app checks are shown by the app window
+    if (!manual) return;
     const r = await dialog.showMessageBox(win(), {
       type: 'info', message: `New version ${latest} available (current: ${app.getVersion()})`,
       detail: `The ${process.platform === 'darwin' ? 'macOS' : 'deb'} build does not support automatic installation. Download the new installer from the download page.`,

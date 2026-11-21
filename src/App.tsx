@@ -8,6 +8,7 @@ import ConnectionsPage from './pages/ConnectionsPage';
 // Pages load on first use: a connection only ever needs the screens of its own
 // kind, so the start screen does not wait for the Mongo, Redis or SQL editors.
 const AboutPage = lazy(() => import('./pages/AboutPage'));
+const VersionsPage = lazy(() => import('./pages/VersionsPage'));
 const ConsolePage = lazy(() => import('./pages/ConsolePage'));
 const DatabasesPage = lazy(() => import('./pages/DatabasesPage'));
 const QueryPage = lazy(() => import('./pages/QueryPage'));
@@ -51,8 +52,8 @@ function ServerPage() {
 export default function App() {
   return (
     <ToastProvider>
-      <UpdateBanner />
       <HashRouter>
+        <UpdateBanner />
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<Navigate to="/connections" replace />} />
@@ -63,6 +64,7 @@ export default function App() {
             <Route path="/c/:connId/db/:db/t/:table" element={<ByKind sql={<GoTablePage />} mongodb={<MongoCollectionPage />} rest={<TableDetailPage />} />} />
             <Route path="/c/:connId/console" element={<ConsolePage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/about/versions" element={<VersionsPage />} />
             <Route path="*" element={<Navigate to="/connections" replace />} />
           </Route>
         </Routes>

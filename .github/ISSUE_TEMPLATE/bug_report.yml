@@ -1,0 +1,65 @@
+name: 🐞 Bug report
+description: Something does not work as it should.
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Issues are public — please do **not** include passwords, server addresses or private data.
+        In the app, **About → Report a bug** fills in the version and system details for you.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did you do, what happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Connect to a PostgreSQL server
+        2. Open a table and edit a cell
+        3. Press Save
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: About page, or Help → Version in the desktop app.
+      placeholder: "0.6.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where does it run?
+      options:
+        - Desktop app — Windows
+        - Desktop app — macOS
+        - Desktop app — Linux
+        - Android app
+        - Web browser / installed web app (PWA)
+        - Other
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database
+      multiple: true
+      options:
+        - BangDB (Go)
+        - BangDB 2.0 REST
+        - PostgreSQL
+        - MySQL / MariaDB
+        - SQL Server
+        - SQLite
+        - MongoDB
+        - Redis
+        - Not database related
+  - type: textarea
+    id: environment
+    attributes:
+      label: App and system details
+      description: Filled in by the app. Database server versions help too.
+      render: text
