@@ -6,6 +6,7 @@ import { APP_VERSION, RELEASES_URL, openExternal, platform } from '../appinfo';
 import { Icons } from '../components/kinds';
 import { TopBar } from '../components/Layout';
 import { Markdown } from '../components/Markdown';
+import { t, tp } from '../i18n';
 import { checkForUpdates, compareVersions, downloadFor, fetchReleases, useUpdate, type Release } from '../update';
 
 interface Row {
@@ -61,15 +62,15 @@ export default function VersionsPage() {
   const p = platform();
   return (
     <>
-      <TopBar title="Version history" crumbs={[{ to: '/about', label: 'About' }]}
+      <TopBar title={t('Version history')} crumbs={[{ to: '/about', label: t('About') }]}
         right={<>
-          <button className="btn sm" onClick={() => void checkForUpdates()} disabled={u.status === 'checking'}>{u.status === 'checking' ? <span className="spin" /> : Icons.refresh}Check for updates</button>
-          <button className="btn sm ghost" onClick={() => openExternal(RELEASES_URL)}>{Icons.github}<span className="hide-narrow">Releases</span></button>
+          <button className="btn sm" onClick={() => void checkForUpdates()} disabled={u.status === 'checking'}>{u.status === 'checking' ? <span className="spin" /> : Icons.refresh}{t('Check for updates')}</button>
+          <button className="btn sm ghost" onClick={() => openExternal(RELEASES_URL)}>{Icons.github}<span className="hide-narrow">{t('Releases')}</span></button>
         </>} />
-      <p className="muted small">You have <b>{APP_VERSION}</b>. {releases ? `${releases.length} releases on GitHub.` : err ? `Could not reach GitHub (${err}) — showing the notes bundled with this build.` : 'Loading releases from GitHub…'}</p>
+      <p className="muted small">{t('You have {v}.', { v: APP_VERSION })} {releases ? tp(releases.length, '{n} release on GitHub.', '{n} releases on GitHub.') : err ? t('Could not reach GitHub ({error}) — showing the notes bundled with this build.', { error: err }) : t('Loading releases from GitHub…')}</p>
       {unreleased && (
         <div className="card version">
-          <div className="vhead"><h3>This build</h3><span className="badge accent">Installed · {APP_VERSION}</span></div>
+          <div className="vhead"><h3>{t('This build')}</h3><span className="badge accent">{t('Installed')} · {APP_VERSION}</span></div>
           <div className="vtitle">{unreleased.title}</div>
           <Markdown text={unreleased.body} />
         </div>
@@ -83,23 +84,23 @@ export default function VersionsPage() {
             <div key={r.version} id={`v${r.version}`} className={`card version${cmp === 0 ? ' current' : ''}`}>
               <div className="vhead">
                 <h3>v{r.version}</h3>
-                {cmp === 0 && <span className="badge accent">Installed</span>}
-                {cmp > 0 && <span className="badge ok">New</span>}
-                {r.release?.prerelease && <span className="badge warn">Pre-release</span>}
+                {cmp === 0 && <span className="badge accent">{t('Installed')}</span>}
+                {cmp > 0 && <span className="badge ok">{t('New')}</span>}
+                {r.release?.prerelease && <span className="badge warn">{t('Pre-release')}</span>}
                 <span className="grow" />
                 {r.date && <span className="muted small">{r.date}</span>}
               </div>
               {r.title && <div className="vtitle">{r.title}</div>}
-              {r.notes ? <Markdown text={r.notes} /> : <p className="muted small">No notes for this version.</p>}
+              {r.notes ? <Markdown text={r.notes} /> : <p className="muted small">{t('No notes for this version.')}</p>}
               {r.release && (
                 <div className="row wrap" style={{ marginTop: 8 }}>
                   {cmp !== 0 && mine && mine !== r.release.html_url && (
-                    <button className={`btn sm${cmp > 0 ? ' primary' : ''}`} onClick={() => openExternal(mine)}>{cmp > 0 ? 'Download update' : 'Install this version'}</button>
+                    <button className={`btn sm${cmp > 0 ? ' primary' : ''}`} onClick={() => openExternal(mine)}>{cmp > 0 ? t('Download update') : t('Install this version')}</button>
                   )}
-                  <button className="btn sm ghost" onClick={() => openExternal(r.release!.html_url)}>{Icons.external}Release page</button>
+                  <button className="btn sm ghost" onClick={() => openExternal(r.release!.html_url)}>{Icons.external}{t('Release page')}</button>
                   {files.length > 0 && (
                     <details className="files">
-                      <summary className="small">{files.length} files</summary>
+                      <summary className="small">{tp(files.length, '{n} file', '{n} files')}</summary>
                       <ul className="small">
                         {files.map((a) => <li key={a.name}><a href={a.browser_download_url} target="_blank" rel="noopener noreferrer">{a.name}</a> <span className="muted">{size(a.size)}</span></li>)}
                       </ul>

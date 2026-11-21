@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { APP_VERSION, openExternal } from '../appinfo';
 import { applyUpdate, dismissUpdateBar, dismissUpdatedNotice, skipVersion, useUpdate } from '../update';
+import { t } from '../i18n';
 import { Icons } from './kinds';
 
 /**
@@ -15,9 +16,9 @@ export default function UpdateBanner() {
     return (
       <div className="updatebar" role="status">
         {Icons.refresh}
-        <span className="grow">{u.version ? `Version ${u.version} is ready.` : 'A new version is ready.'} {u.mode === 'pwa' ? 'Reload to use it.' : 'Restart to install it.'}</span>
-        <button className="btn sm ghost" onClick={dismissUpdateBar}>Later</button>
-        <button className="btn sm primary" onClick={() => void applyUpdate()}>{u.mode === 'pwa' ? 'Reload' : 'Restart now'}</button>
+        <span className="grow">{u.version ? t('Version {v} is ready.', { v: u.version }) : t('A new version is ready.')} {u.mode === 'pwa' ? t('Reload to use it.') : t('Restart to install it.')}</span>
+        <button className="btn sm ghost" onClick={dismissUpdateBar}>{t('Later')}</button>
+        <button className="btn sm primary" onClick={() => void applyUpdate()}>{u.mode === 'pwa' ? t('Reload') : t('Restart now')}</button>
       </div>
     );
   }
@@ -25,9 +26,9 @@ export default function UpdateBanner() {
     return (
       <div className="updatebar" role="status">
         {Icons.refresh}
-        <span className="grow">Version {u.version} is available (you have {APP_VERSION}).</span>
-        <button className="btn sm ghost" onClick={() => void skipVersion(u.version!)}>Skip this version</button>
-        <button className="btn sm primary" onClick={() => u.url && openExternal(u.url)}>Download</button>
+        <span className="grow">{t('Version {v} is available (you have {current}).', { v: u.version, current: APP_VERSION })}</span>
+        <button className="btn sm ghost" onClick={() => void skipVersion(u.version!)}>{t('Skip this version')}</button>
+        <button className="btn sm primary" onClick={() => u.url && openExternal(u.url)}>{t('Download')}</button>
       </div>
     );
   }
@@ -35,9 +36,9 @@ export default function UpdateBanner() {
     return (
       <div className="updatebar ok" role="status">
         {Icons.check}
-        <span className="grow">Updated to {APP_VERSION} (from {u.updatedFrom}).</span>
-        <Link className="btn sm" to={`/about/versions#v${APP_VERSION}`} onClick={dismissUpdatedNotice}>What's new</Link>
-        <button className="btn sm ghost icon" aria-label="Close" onClick={dismissUpdatedNotice}>{Icons.close}</button>
+        <span className="grow">{t('Updated to {v} (from {from}).', { v: APP_VERSION, from: u.updatedFrom })}</span>
+        <Link className="btn sm" to={`/about/versions#v${APP_VERSION}`} onClick={dismissUpdatedNotice}>{t("What's new")}</Link>
+        <button className="btn sm ghost icon" aria-label={t('Close')} onClick={dismissUpdatedNotice}>{Icons.close}</button>
       </div>
     );
   }

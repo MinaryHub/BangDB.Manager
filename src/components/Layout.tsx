@@ -1,12 +1,13 @@
 import { Component, Suspense, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import { useConnections } from '../store/store';
+import { LANGS, setLang, t, tx, useLang } from '../i18n';
 import { nextTheme, setTheme, useTheme, type Theme } from '../theme';
 import CommandPalette, { openPalette } from './CommandPalette';
 import { Icons, KindBadge, KIND_STYLE } from './kinds';
 
 const THEME_ICON: Record<Theme, JSX.Element> = { auto: Icons.theme, light: Icons.sun, dark: Icons.moon };
-const THEME_LABEL: Record<Theme, string> = { auto: 'System theme', light: 'Light theme', dark: 'Dark theme' };
+const THEME_LABEL: Record<Theme, string> = { auto: tx('System theme'), light: tx('Light theme'), dark: tx('Dark theme') };
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 export const MOD_KEY = isMac ? '⌘' : 'Ctrl';
 
@@ -24,9 +25,9 @@ class PageBoundary extends Component<{ children: ReactNode; resetKey: string }, 
     const stale = /dynamically imported module|Loading chunk|Importing a module script failed/i.test(e.message);
     return (
       <div className="card danger" role="alert">
-        <b>{stale ? 'This screen could not be loaded' : 'Something went wrong on this screen'}</b>
-        <p className="small">{stale ? 'The app was probably updated or the network dropped. Reload to get the current version.' : e.message}</p>
-        <button className="btn sm" onClick={() => location.reload()}>Reload</button>
+        <b>{stale ? t('This screen could not be loaded') : t('Something went wrong on this screen')}</b>
+        <p className="small">{stale ? t('The app was probably updated or the network dropped. Reload to get the current version.') : e.message}</p>
+        <button className="btn sm" onClick={() => location.reload()}>{t('Reload')}</button>
       </div>
     );
   }
@@ -45,6 +46,7 @@ export default function Layout() {
   const { connId } = useParams();
   const loc = useLocation();
   const theme = useTheme();
+  const lang = useLang();
   const connections = useConnections();
   const active = connections.find((c) => c.id === connId) ?? connections[0];
   const base = active ? `/c/${active.id}` : undefined;
@@ -52,35 +54,40 @@ export default function Layout() {
   const rest = kind === 'rest' || kind === undefined;
   const dbPath = base ? `${base}/db/${encodeURIComponent(active!.defaultDb)}` : '/connections';
   const links: { to: string; label: string; icon: JSX.Element; disabled?: boolean; end?: boolean }[] = [
-    { to: '/connections', label: 'Servers', icon: I.server },
-    { to: base ? `${base}/dbs` : '/connections', label: rest ? 'DB' : kind === 'redis' ? 'Keys' : 'Overview', icon: rest ? I.db : kind === 'redis' ? I.db : I.chart, disabled: !base },
-    ...(kind && kind !== 'rest' && kind !== 'redis' ? [{ to: dbPath, label: kind === 'mongodb' ? 'Collections' : 'Tables', icon: I.db, end: true }] : []),
+    { to: '/connections', label: t('Servers'), icon: I.server },
+    { to: base ? `${base}/dbs` : '/connections', label: rest ? 'DB' : kind === 'redis' ? t('Keys') : t('Overview'), icon: rest ? I.db : kind === 'redis' ? I.db : I.chart, disabled: !base },
+    ...(kind && kind !== 'rest' && kind !== 'redis' ? [{ to: dbPath, label: kind === 'mongodb' ? t('Collections') : t('Tables'), icon: I.db, end: true }] : []),
     ...(kind !== 'mongodb' && kind !== 'redis' ? [{ to: `${dbPath}/query`, label: 'SQL', icon: I.sql, disabled: !base }] : []),
     ...(kind === 'go' || rest ? [{ to: base ? `${base}/console` : '/connections', label: 'REST', icon: I.console, disabled: !base }] : []),
-    { to: '/about', label: 'About', icon: I.info }
+    { to: '/about', label: t('About'), icon: I.info }
   ];
   const nav = (cls: string) => (
     <nav className={cls}>
       {cls === 'sidenav' && <div className="brand"><span className="mark">{Icons.logo}</span>BangDB Manager</div>}
       {cls === 'sidenav' && (
-        <button className="quick" onClick={openPalette} title="Quick open: servers, tables, pages">
-          {Icons.search}<span className="grow">Quick open…</span><kbd>{MOD_KEY}</kbd><kbd>K</kbd>
+        <button className="quick" onClick={openPalette} title={t('Quick open: servers, tables, pages')}>
+          {Icons.search}<span className="grow">{t('Quick open…')}</span><kbd>{MOD_KEY}</kbd><kbd>K</kbd>
         </button>
       )}
-      {links.map((l) => (
-        <NavLink key={l.label} to={l.to} end={!!l.end} className={({ isActive }) => (isActive && !l.disabled ? 'active' : '')} style={l.disabled ? { opacity: 0.4 } : undefined}>
+      {links.map((l, i) => (
+        <NavLink key={i} to={l.to} end={!!l.end} className={({ isActive }) => (isActive && !l.disabled ? 'active' : '')} style={l.disabled ? { opacity: 0.4 } : undefined}>
           {l.icon}<span>{l.label}</span>
         </NavLink>
       ))}
       {cls === 'sidenav' && (
-        <button className="themebtn" onClick={() => setTheme(nextTheme(theme))} title="Switch theme (system → light → dark)">
-          {THEME_ICON[theme]}<span>{THEME_LABEL[theme]}</span>
+        <button className="themebtn" onClick={() => setTheme(nextTheme(theme))} title={t('Switch theme (system → light → dark)')}>
+          {THEME_ICON[theme]}<span>{t(THEME_LABEL[theme])}</span>
+        </button>
+      )}
+      {cls === 'sidenav' && (
+        <button className="themebtn langbtn" onClick={() => void setLang(lang === 'en' ? 'ko' : 'en')} title="Language · 언어" aria-label={`Language · 언어: ${LANGS.find((l) => l.id === lang)?.label}`}>
+          {Icons.globe}<span>{LANGS.find((l) => l.id === lang)?.label}</span><span className="muted small">→ {LANGS.find((l) => l.id !== lang)?.label}</span>
         </button>
       )}
       {cls === 'sidenav' && active && (
-        <NavLink to="/connections" className="cur" title="Switch server">
+        <NavLink to="/connections" className="cur" title={t('Switch server')}>
           <KindBadge kind={active.kind} small />
-          <span className="t"><b>{active.name}</b><span>{KIND_STYLE[active.kind]?.label ?? active.kind} · click to switch</span></span>
+          <span className="t"><b>{active.name}</b><span>{KIND_STYLE[active.kind]?.label ?? active.kind} · {t('click to switch')}</span></span>
         </NavLink>
       )}
     </nav>
@@ -113,7 +120,7 @@ export function TopBar({ title, crumbs, right }: { title: string; crumbs?: { to?
         <h1>{title}</h1>
       </div>
       {right}
-      <button className="btn ghost icon sm narrow-only" onClick={openPalette} title="Quick open" aria-label="Quick open">{Icons.search}</button>
+      <button className="btn ghost icon sm narrow-only" onClick={openPalette} title={t('Quick open')} aria-label={t('Quick open')}>{Icons.search}</button>
     </div>
   );
 }

@@ -9,23 +9,22 @@ import { CreateTableModal, CreateViewModal } from '../components/SchemaForms';
 import { DataTable, Modal, useConfirm, useToast } from '../components/ui';
 import { useDbConnection } from '../store/store';
 import { dialectOf, viewSelect } from '../api/dialect';
+import { t, tp } from '../i18n';
 
 /** Tables at least this big (by the statistics) keep the estimate instead of a COUNT(*). */
 const EXACT_BELOW = 100_000;
-
-const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
 interface RowCount { n: number; approx?: boolean; counting?: boolean }
 
 const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 });
 
 function CountText({ c, onExact }: { c: RowCount | undefined; onExact: () => void }) {
-  if (!c) return <>… rows</>;
-  if (!c.approx) return <>{c.n.toLocaleString()} rows</>;
+  if (!c) return <>{t('… rows')}</>;
+  if (!c.approx) return <>{tp(c.n, '{n} row', '{n} rows')}</>;
   return (
     <button className="linkbtn" disabled={c.counting} onClick={(e) => { e.stopPropagation(); onExact(); }}
-      title={`About ${c.n.toLocaleString()} rows, from the database statistics. Click to count exactly (scans the table).`}>
-      {c.counting ? 'counting…' : `≈ ${compact.format(c.n)} rows`}
+      title={t('About {n} rows, from the database statistics. Click to count exactly (scans the table).', { n: c.n.toLocaleString() })}>
+      {c.counting ? t('counting…') : t('≈ {n} rows', { n: compact.format(c.n) })}
     </button>
   );
 }
@@ -65,15 +64,15 @@ export default function GoTablesPage() {
     // are counted exactly, a few at a time — a COUNT(*) per table all at
     // once floods the server and the gateway's small pool — and shown as
     // each one arrives.
-    const tableList = r.data.tables.filter((t) => t.kind === 'table');
+    const tableList = r.data.tables.filter((tb) => tb.kind === 'table');
     const est = await estimateCounts(conn);
     if (stale()) return;
     const first: Record<string, RowCount> = {};
-    for (const t of tableList) { const n = est?.get(t.name); if (n !== undefined && n >= EXACT_BELOW) first[t.name] = { n, approx: true }; }
+    for (const tb of tableList) { const n = est?.get(tb.name); if (n !== undefined && n >= EXACT_BELOW) first[tb.name] = { n, approx: true }; }
     setCounts(first);
-    await mapLimit(tableList.filter((t) => !first[t.name]), 4, async (t) => {
-      const n = await countWhere(conn, t.name);
-      if (!stale()) setCounts((c) => ({ ...c, [t.name]: n === undefined ? undefined : { n } }));
+    await mapLimit(tableList.filter((tb) => !first[tb.name]), 4, async (tb) => {
+      const n = await countWhere(conn, tb.name);
+      if (!stale()) setCounts((c) => ({ ...c, [tb.name]: n === undefined ? undefined : { n } }));
     }, stale);
   }, [conn]);
   useEffect(() => { load(); }, [load]);
@@ -83,27 +82,27 @@ export default function GoTablesPage() {
     setCounts((c) => ({ ...c, [name]: c[name] && { ...c[name]!, counting: true } }));
     const n = await countWhere(conn, name);
     setCounts((c) => ({ ...c, [name]: n === undefined ? c[name] && { ...c[name]!, counting: false } : { n } }));
-    if (n === undefined) toast(`Could not count "${name}"`, 'err');
+    if (n === undefined) toast(t('Could not count "{name}"', { name }), 'err');
   }
 
-  if (!conn) return <div className="empty">Connection not found.</div>;
+  if (!conn) return <div className="empty">{t('Connection not found.')}</div>;
   const base = `/c/${conn.id}/db/${encodeURIComponent(db)}`;
-  const shown = tables.filter((t) => t.name.toLowerCase().includes(filter.toLowerCase()));
-  const nT = tables.filter((t) => t.kind === 'table').length;
+  const shown = tables.filter((tb) => tb.name.toLowerCase().includes(filter.toLowerCase()));
+  const nT = tables.filter((tb) => tb.kind === 'table').length;
 
-  async function drop(t: GoTableInfo) {
+  async function drop(tb: GoTableInfo) {
     if (!conn) return;
-    const view = t.kind === 'view';
-    if (!(await confirm(view ? `Drop view "${t.name}".` : `Drop table "${t.name}". All data will be lost.`))) return;
-    const r = view ? await dropView(conn, t.name) : await dropTable(conn, t.name);
-    if (r.ok) { toast(`"${t.name}" deleted`, 'ok'); load(); } else toast(`Delete failed: ${errorText(r)}`, 'err');
+    const view = tb.kind === 'view';
+    if (!(await confirm(view ? t('Drop view "{name}".', { name: tb.name }) : t('Drop table "{name}". All data will be lost.', { name: tb.name })))) return;
+    const r = view ? await dropView(conn, tb.name) : await dropTable(conn, tb.name);
+    if (r.ok) { toast(t('"{name}" deleted', { name: tb.name }), 'ok'); load(); } else toast(t('Delete failed: {error}', { error: errorText(r) }), 'err');
   }
 
   async function create(sql: string, name: string): Promise<boolean> {
     if (!conn) return false;
     const r = await goQuery(conn, sql, undefined, { mode: 'exec' });
-    if (!r.ok) { toast(`Failed: ${errorText(r)}`, 'err'); return false; }
-    toast(`"${name}" created`, 'ok');
+    if (!r.ok) { toast(t('Failed: {error}', { error: errorText(r) }), 'err'); return false; }
+    toast(t('"{name}" created', { name }), 'ok');
     await load();
     if (name) nav(`${base}/t/${encodeURIComponent(name)}`);
     return true;
@@ -111,54 +110,54 @@ export default function GoTablesPage() {
 
   return (
     <>
-      <TopBar title={conn.db && conn.kind !== 'sqlite' ? db : 'Tables'} crumbs={[{ to: '/connections', label: 'Servers' }, { to: `/c/${conn.id}/dbs`, label: conn.name }]}
+      <TopBar title={conn.db && conn.kind !== 'sqlite' ? db : t('Tables')} crumbs={[{ to: '/connections', label: t('Servers') }, { to: `/c/${conn.id}/dbs`, label: conn.name }]}
         right={<>
           <button className="btn sm" onClick={() => nav(`${base}/query`)}>SQL</button>
-          <button className="btn sm" onClick={() => setCreating('view')}>+ View</button>
-          <button className="btn primary sm" onClick={() => setCreating('table')}>+ Table</button>
+          <button className="btn sm" onClick={() => setCreating('view')}>{t('+ View')}</button>
+          <button className="btn primary sm" onClick={() => setCreating('table')}>{t('+ Table')}</button>
         </>} />
       <div className="toolbar">
-        <input type="search" className="inp filter" placeholder="Search tables and views — Enter opens the first match" value={filter} onChange={(e) => setFilter(e.target.value)}
+        <input type="search" className="inp filter" placeholder={t('Search tables and views — Enter opens the first match')} value={filter} onChange={(e) => setFilter(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && shown[0]) nav(`${base}/t/${encodeURIComponent(shown[0].name)}`); }} />
-        <span className="muted small">{plural(nT, 'table')} · {plural(tables.length - nT, 'view')}</span>
-        <button className="btn ghost icon sm" onClick={load} disabled={loading} title="Refresh" aria-label="Refresh">{loading ? <span className="spin" /> : Icons.refresh}</button>
+        <span className="muted small">{tp(nT, '{n} table', '{n} tables')} · {tp(tables.length - nT, '{n} view', '{n} views')}</span>
+        <button className="btn ghost icon sm" onClick={load} disabled={loading} title={t('Refresh')} aria-label={t('Refresh')}>{loading ? <span className="spin" /> : Icons.refresh}</button>
       </div>
       {err && <div className="card danger">{err}</div>}
       {!err && !loading && tables.length === 0 && (
         <div className="card">
-          <p><b>No tables.</b></p>
-          <p className="muted small">Create one with "+ Table" by choosing columns and constraints, or restore a dump with "Run SQL script" on the server page.</p>
-          <button className="btn primary" onClick={() => setCreating('table')}>+ Create table</button>
+          <p><b>{t('No tables.')}</b></p>
+          <p className="muted small">{t('Create one with "+ Table" by choosing columns and constraints, or restore a dump with "Run SQL script" on the server page.')}</p>
+          <button className="btn primary" onClick={() => setCreating('table')}>{t('+ Create table')}</button>
         </div>
       )}
       <div className="list">
-        {shown.map((t) => (
-          <div key={t.name} className="item">
-            <div className="grow" style={{ cursor: 'pointer' }} onClick={() => nav(`${base}/t/${encodeURIComponent(t.name)}`)}>
+        {shown.map((tb) => (
+          <div key={tb.name} className="item">
+            <div className="grow" style={{ cursor: 'pointer' }} onClick={() => nav(`${base}/t/${encodeURIComponent(tb.name)}`)}>
               <div className="title mono">
-                {t.name}
-                {t.kind === 'view' && <span className="badge accent" style={{ marginLeft: 8 }}>View</span>}
-                {t.store === 'memory' && <span className="badge accent" style={{ marginLeft: 8 }}>In-memory</span>}
-                {t.store === 'timeseries' && <span className="badge accent" style={{ marginLeft: 8 }}>Time series</span>}
+                {tb.name}
+                {tb.kind === 'view' && <span className="badge accent" style={{ marginLeft: 8 }}>{t('View')}</span>}
+                {tb.store === 'memory' && <span className="badge accent" style={{ marginLeft: 8 }}>{t('In-memory')}</span>}
+                {tb.store === 'timeseries' && <span className="badge accent" style={{ marginLeft: 8 }}>{t('Time series')}</span>}
               </div>
               <div className="sub">
-                {t.kind === 'view'
-                  ? viewSelect(t.sql ?? '').replace(/\s+/g, ' ').slice(0, 120)
-                  : <>{plural(t.columns?.length ?? 0, 'column')} · {plural((t.indexes ?? []).filter((i) => !i.auto).length, 'index', 'indexes')} · <CountText c={counts[t.name]} onExact={() => countExactly(t.name)} /> — {(t.columns ?? []).map((c) => c.name).join(', ')}</>}
+                {tb.kind === 'view'
+                  ? viewSelect(tb.sql ?? '').replace(/\s+/g, ' ').slice(0, 120)
+                  : <>{tp(tb.columns?.length ?? 0, '{n} column', '{n} columns')} · {tp((tb.indexes ?? []).filter((i) => !i.auto).length, '{n} index', '{n} indexes')} · <CountText c={counts[tb.name]} onExact={() => countExactly(tb.name)} /> — {(tb.columns ?? []).map((c) => c.name).join(', ')}</>}
               </div>
             </div>
-            <button className="btn ghost icon sm danger" onClick={() => drop(t)} title="Delete" aria-label="Delete">{Icons.trash}</button>
-            <span className="chev" onClick={() => nav(`${base}/t/${encodeURIComponent(t.name)}`)}>{Icons.chevron}</span>
+            <button className="btn ghost icon sm danger" onClick={() => drop(tb)} title={t('Delete')} aria-label={t('Delete')}>{Icons.trash}</button>
+            <span className="chev" onClick={() => nav(`${base}/t/${encodeURIComponent(tb.name)}`)}>{Icons.chevron}</span>
           </div>
         ))}
       </div>
-      <button className="fab" onClick={() => setCreating('table')} aria-label="Create table">+</button>
+      <button className="fab" onClick={() => setCreating('table')} aria-label={t('Create table')}>+</button>
       {creating === 'table' && <CreateTableModal tables={tables} d={dialectOf(conn)} onClose={() => setCreating(null)} onCreate={create} />}
       {creating === 'view' && (
         <CreateViewModal d={dialectOf(conn)} onClose={() => setCreating(null)} onCreate={create}
           onPreview={async (s) => { const r = await goQuery(conn, s, undefined, { limit: 5 }); if (r.ok) setPreview(goRows(r.data)); else toast(errorText(r), 'err'); }} />
       )}
-      {preview && <Modal title="Preview (5 rows)" onClose={() => setPreview(null)} wide><DataTable rows={preview} /></Modal>}
+      {preview && <Modal title={t('Preview (5 rows)')} onClose={() => setPreview(null)} wide><DataTable rows={preview} /></Modal>}
       {confirmEl}
     </>
   );

@@ -2,6 +2,7 @@
  * SQL dialects of the databases the app manages. The grid, structure editor,
  * dump and console build their SQL through these.
  */
+import { tx } from '../i18n';
 import type { ColumnInfo, Connection, GoTableInfo } from './types';
 
 export type DialectId = 'bangdb' | 'postgres' | 'mysql' | 'mssql' | 'sqlite';
@@ -88,9 +89,9 @@ export const BANGDB: Dialect = {
   id: 'bangdb', label: 'BangDB',
   q: dq, qt: dq,
   types: [
-    { decl: 'INTEGER', hint: 'integer (int64)' }, { decl: 'TEXT', hint: 'string' }, { decl: 'REAL', hint: 'float (float64)' }, { decl: 'BOOLEAN', hint: 'true/false (1/0)' },
-    { decl: 'JSON', hint: 'JSON document (TEXT)' }, { decl: 'TIMESTAMP', hint: 'date & time (TEXT)' }, { decl: 'DATE', hint: 'date (TEXT)' }, { decl: 'VARCHAR(255)', hint: 'string' },
-    { decl: 'NUMERIC', hint: 'number (REAL)' }, { decl: 'UUID', hint: 'UUID (TEXT)' }, { decl: 'BLOB', hint: 'binary' }, { decl: '', hint: 'ANY (no conversion)' }
+    { decl: 'INTEGER', hint: tx('integer (int64)') }, { decl: 'TEXT', hint: tx('string') }, { decl: 'REAL', hint: tx('float (float64)') }, { decl: 'BOOLEAN', hint: tx('true/false (1/0)') },
+    { decl: 'JSON', hint: tx('JSON document (TEXT)') }, { decl: 'TIMESTAMP', hint: tx('date & time (TEXT)') }, { decl: 'DATE', hint: tx('date (TEXT)') }, { decl: 'VARCHAR(255)', hint: tx('string') },
+    { decl: 'NUMERIC', hint: tx('number (REAL)') }, { decl: 'UUID', hint: tx('UUID (TEXT)') }, { decl: 'BLOB', hint: tx('binary') }, { decl: '', hint: tx('ANY (no conversion)') }
   ],
   collations: ['NOCASE', 'RTRIM'],
   storage: true,
@@ -105,8 +106,8 @@ export const BANGDB: Dialect = {
   explain: { plan: 'EXPLAIN ', analyze: 'EXPLAIN ANALYZE ' },
   analyzeTable: (t) => `ANALYZE ${dq(t)}`,
   maintenance: [
-    { label: 'ANALYZE', desc: 'Collects index statistics to improve join order and index selection', sql: 'ANALYZE' },
-    { label: 'VACUUM', desc: 'Rewrites the file to reclaim space freed by deletes (writes wait until it finishes)', sql: 'VACUUM', confirm: true }
+    { label: 'ANALYZE', desc: tx('Collects index statistics to improve join order and index selection'), sql: 'ANALYZE' },
+    { label: 'VACUUM', desc: tx('Rewrites the file to reclaim space freed by deletes (writes wait until it finishes)'), sql: 'VACUUM', confirm: true }
   ],
   literal: (v) => stdLiteral(v)
 };
@@ -114,19 +115,19 @@ export const BANGDB: Dialect = {
 export const SQLITE: Dialect = {
   ...BANGDB, id: 'sqlite', label: 'SQLite', storage: false,
   types: [
-    { decl: 'INTEGER', hint: 'integer' }, { decl: 'TEXT', hint: 'string' }, { decl: 'REAL', hint: 'float' }, { decl: 'NUMERIC', hint: 'number' },
-    { decl: 'BOOLEAN', hint: 'true/false (1/0)' }, { decl: 'DATE', hint: 'date (TEXT)' }, { decl: 'DATETIME', hint: 'date & time (TEXT)' }, { decl: 'JSON', hint: 'JSON (TEXT)' },
-    { decl: 'BLOB', hint: 'binary' }, { decl: '', hint: 'no type' }
+    { decl: 'INTEGER', hint: tx('integer') }, { decl: 'TEXT', hint: tx('string') }, { decl: 'REAL', hint: tx('float') }, { decl: 'NUMERIC', hint: tx('number') },
+    { decl: 'BOOLEAN', hint: tx('true/false (1/0)') }, { decl: 'DATE', hint: tx('date (TEXT)') }, { decl: 'DATETIME', hint: tx('date & time (TEXT)') }, { decl: 'JSON', hint: tx('JSON (TEXT)') },
+    { decl: 'BLOB', hint: tx('binary') }, { decl: '', hint: tx('no type') }
   ],
   collations: ['NOCASE', 'RTRIM'],
   addColumn: { unique: false, check: true, references: true, keyword: 'ADD COLUMN' },
   explain: { plan: 'EXPLAIN QUERY PLAN ' },
   maintenance: [
-    { label: 'ANALYZE', desc: 'Refreshes query planner statistics', sql: 'ANALYZE' },
-    { label: 'PRAGMA optimize', desc: 'Refreshes only the statistics that need it', sql: 'PRAGMA optimize' },
-    { label: 'PRAGMA integrity_check', desc: 'Checks file integrity ("ok" means healthy)', sql: 'PRAGMA integrity_check' },
-    { label: 'PRAGMA foreign_key_check', desc: 'Finds rows that violate foreign keys', sql: 'PRAGMA foreign_key_check' },
-    { label: 'VACUUM', desc: 'Rewrites the file to reclaim free space', sql: 'VACUUM', confirm: true }
+    { label: 'ANALYZE', desc: tx('Refreshes query planner statistics'), sql: 'ANALYZE' },
+    { label: 'PRAGMA optimize', desc: tx('Refreshes only the statistics that need it'), sql: 'PRAGMA optimize' },
+    { label: 'PRAGMA integrity_check', desc: tx('Checks file integrity ("ok" means healthy)'), sql: 'PRAGMA integrity_check' },
+    { label: 'PRAGMA foreign_key_check', desc: tx('Finds rows that violate foreign keys'), sql: 'PRAGMA foreign_key_check' },
+    { label: 'VACUUM', desc: tx('Rewrites the file to reclaim free space'), sql: 'VACUUM', confirm: true }
   ]
 };
 
@@ -135,10 +136,10 @@ export const POSTGRES: Dialect = {
   estimateRows: "SELECT CASE WHEN n.nspname = 'public' THEN c.relname ELSE n.nspname || '.' || c.relname END AS name, c.reltuples::bigint AS n FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind IN ('r', 'p') AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg_toast%'",
   q: dq, qt: splitSchema(dq),
   types: [
-    { decl: 'integer', hint: 'integer' }, { decl: 'bigint', hint: 'big integer' }, { decl: 'text', hint: 'string' }, { decl: 'varchar(255)', hint: 'length-limited string' },
-    { decl: 'boolean', hint: 'true/false' }, { decl: 'numeric(12,2)', hint: 'fixed-point decimal' }, { decl: 'double precision', hint: 'float' }, { decl: 'date', hint: 'date' },
-    { decl: 'timestamp', hint: 'date & time' }, { decl: 'timestamptz', hint: 'with time zone' }, { decl: 'jsonb', hint: 'JSON (indexable)' }, { decl: 'uuid', hint: 'UUID' },
-    { decl: 'bytea', hint: 'binary' }, { decl: 'text[]', hint: 'string array' }
+    { decl: 'integer', hint: tx('integer') }, { decl: 'bigint', hint: tx('big integer') }, { decl: 'text', hint: tx('string') }, { decl: 'varchar(255)', hint: tx('length-limited string') },
+    { decl: 'boolean', hint: tx('true/false') }, { decl: 'numeric(12,2)', hint: tx('fixed-point decimal') }, { decl: 'double precision', hint: tx('float') }, { decl: 'date', hint: tx('date') },
+    { decl: 'timestamp', hint: tx('date & time') }, { decl: 'timestamptz', hint: tx('with time zone') }, { decl: 'jsonb', hint: tx('JSON (indexable)') }, { decl: 'uuid', hint: tx('UUID') },
+    { decl: 'bytea', hint: tx('binary') }, { decl: 'text[]', hint: tx('string array') }
   ],
   collations: [],
   storage: false,
@@ -162,10 +163,10 @@ export const POSTGRES: Dialect = {
   explain: { plan: 'EXPLAIN ', analyze: 'EXPLAIN ANALYZE ' },
   analyzeTable: (t) => `ANALYZE ${POSTGRES.qt(t)}`,
   maintenance: [
-    { label: 'ANALYZE', desc: 'Refreshes statistics for all tables', sql: 'ANALYZE' },
-    { label: 'VACUUM', desc: 'Cleans up dead rows so their space can be reused', sql: 'VACUUM' },
-    { label: 'VACUUM FULL', desc: 'Rewrites tables to return space to the OS (locks tables)', sql: 'VACUUM FULL', confirm: true },
-    { label: 'REINDEX', desc: 'Rebuilds the indexes of the current database', sql: 'REINDEX DATABASE CURRENT_DATABASE', confirm: true }
+    { label: 'ANALYZE', desc: tx('Refreshes statistics for all tables'), sql: 'ANALYZE' },
+    { label: 'VACUUM', desc: tx('Cleans up dead rows so their space can be reused'), sql: 'VACUUM' },
+    { label: 'VACUUM FULL', desc: tx('Rewrites tables to return space to the OS (locks tables)'), sql: 'VACUUM FULL', confirm: true },
+    { label: 'REINDEX', desc: tx('Rebuilds the indexes of the current database'), sql: 'REINDEX DATABASE CURRENT_DATABASE', confirm: true }
   ],
   literal: (v) => stdLiteral(v, { bool: (b) => (b ? 'TRUE' : 'FALSE'), blob: (h) => `'\\x${h}'::bytea` }),
   dumpIdentity: (t, cols) => ({
@@ -181,9 +182,9 @@ export const MYSQL: Dialect = {
   estimateRows: "SELECT TABLE_NAME AS name, TABLE_ROWS AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'",
   q: bq, qt: bq,
   types: [
-    { decl: 'INT', hint: 'integer' }, { decl: 'BIGINT', hint: 'big integer' }, { decl: 'VARCHAR(255)', hint: 'string' }, { decl: 'TEXT', hint: 'long string' },
-    { decl: 'BOOLEAN', hint: 'true/false (TINYINT(1))' }, { decl: 'DECIMAL(12,2)', hint: 'fixed-point decimal' }, { decl: 'DOUBLE', hint: 'float' }, { decl: 'DATE', hint: 'date' },
-    { decl: 'DATETIME', hint: 'date & time' }, { decl: 'TIMESTAMP', hint: 'timestamp' }, { decl: 'JSON', hint: 'JSON' }, { decl: "ENUM('a','b')", hint: 'enum' }, { decl: 'BLOB', hint: 'binary' }
+    { decl: 'INT', hint: tx('integer') }, { decl: 'BIGINT', hint: tx('big integer') }, { decl: 'VARCHAR(255)', hint: tx('string') }, { decl: 'TEXT', hint: tx('long string') },
+    { decl: 'BOOLEAN', hint: tx('true/false (TINYINT(1))') }, { decl: 'DECIMAL(12,2)', hint: tx('fixed-point decimal') }, { decl: 'DOUBLE', hint: tx('float') }, { decl: 'DATE', hint: tx('date') },
+    { decl: 'DATETIME', hint: tx('date & time') }, { decl: 'TIMESTAMP', hint: tx('timestamp') }, { decl: 'JSON', hint: tx('JSON') }, { decl: "ENUM('a','b')", hint: tx('enum') }, { decl: 'BLOB', hint: tx('binary') }
   ],
   collations: ['utf8mb4_general_ci', 'utf8mb4_unicode_ci', 'utf8mb4_bin', 'utf8mb4_0900_ai_ci'],
   storage: false,
@@ -200,9 +201,9 @@ export const MYSQL: Dialect = {
   explain: { plan: 'EXPLAIN ', analyze: 'EXPLAIN ANALYZE ' },
   analyzeTable: (t) => `ANALYZE TABLE ${bq(t)}`,
   maintenance: [
-    { label: 'ANALYZE TABLE', desc: 'Refreshes key distribution statistics for all tables', sql: (ts) => ts.map((t) => `ANALYZE TABLE ${bq(t)}`) },
-    { label: 'CHECK TABLE', desc: 'Checks all tables for errors', sql: (ts) => ts.map((t) => `CHECK TABLE ${bq(t)}`) },
-    { label: 'OPTIMIZE TABLE', desc: 'Rebuilds tables to reclaim space (takes locks)', sql: (ts) => ts.map((t) => `OPTIMIZE TABLE ${bq(t)}`), confirm: true }
+    { label: 'ANALYZE TABLE', desc: tx('Refreshes key distribution statistics for all tables'), sql: (ts) => ts.map((t) => `ANALYZE TABLE ${bq(t)}`) },
+    { label: 'CHECK TABLE', desc: tx('Checks all tables for errors'), sql: (ts) => ts.map((t) => `CHECK TABLE ${bq(t)}`) },
+    { label: 'OPTIMIZE TABLE', desc: tx('Rebuilds tables to reclaim space (takes locks)'), sql: (ts) => ts.map((t) => `OPTIMIZE TABLE ${bq(t)}`), confirm: true }
   ],
   literal: (v) => stdLiteral(v, { str: (s) => `'${s.replace(/\\/g, '\\\\').replace(/'/g, "''")}'` }),
   createDatabase: (n) => `CREATE DATABASE ${bq(n)} CHARACTER SET utf8mb4`,
@@ -214,9 +215,9 @@ export const MSSQL: Dialect = {
   estimateRows: "SELECT CASE WHEN s.name = 'dbo' THEN t.name ELSE s.name + '.' + t.name END AS name, SUM(p.rows) AS n FROM sys.tables t JOIN sys.schemas s ON s.schema_id = t.schema_id JOIN sys.partitions p ON p.object_id = t.object_id AND p.index_id IN (0, 1) GROUP BY s.name, t.name",
   q: sq, qt: splitSchema(sq),
   types: [
-    { decl: 'INT', hint: 'integer' }, { decl: 'BIGINT', hint: 'big integer' }, { decl: 'NVARCHAR(255)', hint: 'Unicode string' }, { decl: 'NVARCHAR(MAX)', hint: 'long string' },
-    { decl: 'VARCHAR(255)', hint: 'string' }, { decl: 'BIT', hint: 'true/false' }, { decl: 'DECIMAL(12,2)', hint: 'fixed-point decimal' }, { decl: 'FLOAT', hint: 'float' },
-    { decl: 'DATE', hint: 'date' }, { decl: 'DATETIME2', hint: 'date & time' }, { decl: 'UNIQUEIDENTIFIER', hint: 'GUID' }, { decl: 'VARBINARY(MAX)', hint: 'binary' }
+    { decl: 'INT', hint: tx('integer') }, { decl: 'BIGINT', hint: tx('big integer') }, { decl: 'NVARCHAR(255)', hint: tx('Unicode string') }, { decl: 'NVARCHAR(MAX)', hint: tx('long string') },
+    { decl: 'VARCHAR(255)', hint: tx('string') }, { decl: 'BIT', hint: tx('true/false') }, { decl: 'DECIMAL(12,2)', hint: tx('fixed-point decimal') }, { decl: 'FLOAT', hint: tx('float') },
+    { decl: 'DATE', hint: tx('date') }, { decl: 'DATETIME2', hint: tx('date & time') }, { decl: 'UNIQUEIDENTIFIER', hint: tx('GUID') }, { decl: 'VARBINARY(MAX)', hint: tx('binary') }
   ],
   collations: ['Korean_Wansung_CI_AS', 'Latin1_General_CI_AS', 'Latin1_General_BIN2'],
   storage: false,
@@ -233,8 +234,8 @@ export const MSSQL: Dialect = {
   explain: null,
   analyzeTable: (t) => `UPDATE STATISTICS ${MSSQL.qt(t)}`,
   maintenance: [
-    { label: 'sp_updatestats', desc: 'Refreshes statistics for all tables', sql: 'EXEC sp_updatestats' },
-    { label: 'DBCC CHECKDB', desc: 'Checks the integrity of the current database', sql: 'DBCC CHECKDB WITH NO_INFOMSGS', confirm: true }
+    { label: 'sp_updatestats', desc: tx('Refreshes statistics for all tables'), sql: 'EXEC sp_updatestats' },
+    { label: 'DBCC CHECKDB', desc: tx('Checks the integrity of the current database'), sql: 'DBCC CHECKDB WITH NO_INFOMSGS', confirm: true }
   ],
   literal: (v) => stdLiteral(v, { blob: (h) => `0x${h}`, str: (s) => `N'${s.replace(/'/g, "''")}'` }),
   dumpIdentity: (t, cols) => (cols.some((c) => c.autoinc) ? { before: [`SET IDENTITY_INSERT ${MSSQL.qt(t)} ON`], after: [`SET IDENTITY_INSERT ${MSSQL.qt(t)} OFF`] } : { before: [], after: [] }),

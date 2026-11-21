@@ -8,6 +8,7 @@ import type { ApiResult, ColumnInfo, Connection, CreateTableSpec, GoQueryRespons
 import { call } from './bangdb';
 import { BANGDB, dialectOf, identityOf, type Dialect, type Identity } from './dialect';
 import { gw } from './gateway';
+import { t, tp } from '../i18n';
 
 /** Quote an identifier for BangDB SQL. */
 export const qi = (name: string) => `"${String(name).replace(/"/g, '""')}"`;
@@ -175,7 +176,7 @@ export function storageSql(s: StorageSpec | undefined): string {
   const opts: string[] = [];
   if (s.using === 'memory' && s.persist) opts.push('persist = true');
   if (s.using === 'timeseries') {
-    if (!s.timeColumn?.trim()) throw new Error('Time-series tables require a time column');
+    if (!s.timeColumn?.trim()) throw new Error(t('Time-series tables require a time column'));
     opts.push(`time_column = ${qi(s.timeColumn.trim())}`);
     if (s.timeUnit) opts.push(`time_unit = '${s.timeUnit}'`);
     if (s.retention?.trim()) opts.push(`retention = '${s.retention.trim().replace(/'/g, "''")}'`);
@@ -197,9 +198,9 @@ export interface CreateTableOptions {
 
 export function createTableSql(spec: CreateTableSpec & CreateTableOptions, d: Dialect = BANGDB): string {
   if (spec.sql?.trim()) return spec.sql.trim();
-  if (!spec.table_name?.trim()) throw new Error('Enter a table name');
+  if (!spec.table_name?.trim()) throw new Error(t('Enter a table name'));
   const cols = (spec.columns ?? []).filter((c) => c.name.trim());
-  if (!cols.length) throw new Error('Specify at least one column');
+  if (!cols.length) throw new Error(t('Specify at least one column'));
   const pkCols = cols.filter((c) => c.pk);
   const composite = pkCols.length > 1;
   const defs = cols.map((c) => columnDefSql(c, { pkInline: !composite }, d));
@@ -225,7 +226,7 @@ export const createView = (c: Connection, name: string, select: string) => execS
 export const dropView = (c: Connection, name: string) => execSql(c, `DROP VIEW ${dialectOf(c).qt(name)}`);
 
 export function createIndexSql(table: string, columns: string[], opts: { name?: string; unique?: boolean } = {}, d: Dialect = BANGDB): string {
-  if (!columns.length) throw new Error('Select at least one index column');
+  if (!columns.length) throw new Error(t('Select at least one index column'));
   const base = table.includes('.') ? table.slice(table.indexOf('.') + 1) : table;
   const name = opts.name?.trim() || `idx_${base}_${columns.join('_')}`.replace(/[^\w]/g, '_');
   return `CREATE ${opts.unique ? 'UNIQUE ' : ''}INDEX ${d.q(name)} ON ${d.qt(table)} (${columns.map(d.q).join(', ')})`;
@@ -254,35 +255,35 @@ export async function rowCount(c: Connection, table: string): Promise<ApiResult<
 export function insertRow(c: Connection, table: string, doc: Record<string, unknown>) {
   const d = dialectOf(c);
   const cols = Object.keys(doc);
-  if (!cols.length) throw new Error('Enter at least one value');
+  if (!cols.length) throw new Error(t('Enter at least one value'));
   const sql = `INSERT INTO ${d.qt(table)} (${cols.map(d.q).join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`;
   return goQuery(c, sql, cols.map((k) => sqlValue(doc[k])), { mode: 'exec' });
 }
 
 export function updateRow(c: Connection, table: string, doc: Record<string, unknown>, original: Record<string, unknown>, pk: string[]) {
-  if (!pk.length) throw new Error('Rows cannot be updated in a table without a primary key. Use the SQL console.');
+  if (!pk.length) throw new Error(t('Rows cannot be updated in a table without a primary key. Use the SQL console.'));
   const d = dialectOf(c);
   const cols = Object.keys(doc).filter((k) => !pk.includes(k) || doc[k] !== original[k]);
-  if (!cols.length) throw new Error('No values changed');
+  if (!cols.length) throw new Error(t('No values changed'));
   const sql = `UPDATE ${d.qt(table)} SET ${cols.map((k) => `${d.q(k)} = ?`).join(', ')} WHERE ${pk.map((k) => `${d.q(k)} = ?`).join(' AND ')}`;
   return goQuery(c, sql, [...cols.map((k) => sqlValue(doc[k])), ...pk.map((k) => sqlValue(original[k]))], { mode: 'exec' });
 }
 
 export function deleteRow(c: Connection, table: string, original: Record<string, unknown>, pk: string[]) {
-  if (!pk.length) throw new Error('Rows cannot be deleted in a table without a primary key. Use the SQL console.');
+  if (!pk.length) throw new Error(t('Rows cannot be deleted in a table without a primary key. Use the SQL console.'));
   const d = dialectOf(c);
   const sql = `DELETE FROM ${d.qt(table)} WHERE ${pk.map((k) => `${d.q(k)} = ?`).join(' AND ')}`;
   return goQuery(c, sql, pk.map((k) => sqlValue(original[k])), { mode: 'exec' });
 }
 
 export function getRow(c: Connection, table: string, pk: string[], key: string) {
-  if (!pk.length) throw new Error('Table has no primary key');
+  if (!pk.length) throw new Error(t('Table has no primary key'));
   const d = dialectOf(c);
   return goQuery(c, `SELECT * FROM ${d.qt(table)} WHERE ${d.q(pk[0])} = ?`, [coerceKey(key)], { limit: 1 });
 }
 
 export function deleteByKey(c: Connection, table: string, pk: string[], key: string) {
-  if (!pk.length) throw new Error('Table has no primary key');
+  if (!pk.length) throw new Error(t('Table has no primary key'));
   const d = dialectOf(c);
   return goQuery(c, `DELETE FROM ${d.qt(table)} WHERE ${d.q(pk[0])} = ?`, [coerceKey(key)], { mode: 'exec' });
 }
@@ -406,11 +407,11 @@ export function changeStatements(table: string, changes: RowChange[], d: Dialect
       out.push({ sql: `UPDATE ${T} SET ${cols.map((k) => `${d.q(k)} = ?`).join(', ')} WHERE ${w.sql}`, args: [...cols.map((k) => sqlValue(ch.values[k])), ...w.args] });
     } else {
       const cols = Object.keys(ch.values);
-      if (!cols.length) throw new Error('Enter at least one value for the new row');
+      if (!cols.length) throw new Error(t('Enter at least one value for the new row'));
       out.push({ sql: `INSERT INTO ${T} (${cols.map(d.q).join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`, args: cols.map((k) => sqlValue(ch.values[k])) });
     }
   }
-  if (!out.length) throw new Error('No changes to save');
+  if (!out.length) throw new Error(t('No changes to save'));
   return out;
 }
 
@@ -446,20 +447,20 @@ export const isBlob = (v: unknown): v is { blob: string } => !!v && typeof v ===
 /** Text typed into an editor → value for the column; throws on a bad number. */
 export function parseInput(text: string, col: ColumnInfo | undefined): unknown {
   const a = affinity(col);
-  const t = text.trim();
+  const v = text.trim();
   if (a === 'INTEGER') {
-    if (!t) return null;
-    if (!/^[-+]?\d+$/.test(t)) throw new Error(`${col?.name ?? 'value'}: not an integer`);
-    const n = Number(t);
-    return Number.isSafeInteger(n) ? n : t;
+    if (!v) return null;
+    if (!/^[-+]?\d+$/.test(v)) throw new Error(t('{name}: not an integer', { name: col?.name ?? t('value') }));
+    const n = Number(v);
+    return Number.isSafeInteger(n) ? n : v;
   }
   if (a === 'REAL') {
-    if (!t) return null;
-    const n = Number(t);
-    if (!Number.isFinite(n)) throw new Error(`${col?.name ?? 'value'}: not a number`);
+    if (!v) return null;
+    const n = Number(v);
+    if (!Number.isFinite(n)) throw new Error(t('{name}: not a number', { name: col?.name ?? t('value') }));
     return n;
   }
-  if (a === 'ANY' && /^[-+]?\d+(\.\d+)?$/.test(t)) return Number(t);
+  if (a === 'ANY' && /^[-+]?\d+(\.\d+)?$/.test(v)) return Number(v);
   return text;
 }
 
@@ -582,23 +583,23 @@ export async function dumpSql(c: Connection, onProgress?: (msg: string) => void,
   const d = dialectOf(c);
   const r = await goTables(c);
   if (!r.ok) throw new Error(errorText(r));
-  const all = r.data.tables.filter((t) => !only || only.includes(t.name));
-  const tables = orderByDependencies(all.filter((t) => t.kind === 'table'));
+  const all = r.data.tables.filter((tb) => !only || only.includes(tb.name));
+  const tables = orderByDependencies(all.filter((tb) => tb.kind === 'table'));
   const out: string[] = [`-- ${d.label} dump ${new Date().toISOString()}`, ''];
-  for (const t of tables) {
-    onProgress?.(`Reading ${t.name}…`);
-    out.push(`-- ${t.name}`, endStmt(t.sql ?? ''));
-    const { columns, rows } = await readAll(c, t.name, { onPage: (n) => onProgress?.(`${t.name}: ${n} rows`), ident: identityOf(d, t) });
-    const wrap = d.dumpIdentity?.(t.name, t.columns ?? []) ?? { before: [], after: [] };
+  for (const tb of tables) {
+    onProgress?.(t('Reading {table}…', { table: tb.name }));
+    out.push(`-- ${tb.name}`, endStmt(tb.sql ?? ''));
+    const { columns, rows } = await readAll(c, tb.name, { onPage: (n) => onProgress?.(tp(n, '{table}: {n} row', '{table}: {n} rows', { table: tb.name })), ident: identityOf(d, tb) });
+    const wrap = d.dumpIdentity?.(tb.name, tb.columns ?? []) ?? { before: [], after: [] };
     if (rows.length) out.push(...wrap.before.map(endStmt));
-    const head = `INSERT INTO ${d.qt(t.name)} (${columns.map(d.q).join(', ')}) VALUES`;
+    const head = `INSERT INTO ${d.qt(tb.name)} (${columns.map(d.q).join(', ')}) VALUES`;
     for (let i = 0; i < rows.length; i += 100) {
       out.push(`${head}\n  ${rows.slice(i, i + 100).map((row) => `(${row.map(d.literal).join(', ')})`).join(',\n  ')};`);
     }
     if (rows.length) out.push(...wrap.after.map(endStmt));
     out.push('');
   }
-  for (const v of all.filter((t) => t.kind === 'view')) out.push(`-- view ${v.name}`, endStmt(v.sql ?? ''), '');
+  for (const v of all.filter((tb) => tb.kind === 'view')) out.push(`-- view ${v.name}`, endStmt(v.sql ?? ''), '');
   return out.join('\n');
 }
 
@@ -752,7 +753,7 @@ export const insertModes = (d: Dialect): InsertMode[] =>
   d.id === 'mssql' ? ['insert'] : d.id === 'postgres' ? ['insert', 'ignore'] : ['insert', 'ignore', 'replace'];
 
 export function insertBatchSql(table: string, cols: string[], rows: unknown[][], mode: InsertMode = 'insert', d: Dialect = BANGDB): { sql: string; args: unknown[] } {
-  if (!insertModes(d).includes(mode)) throw new Error(`${d.label} does not support this duplicate handling mode`);
+  if (!insertModes(d).includes(mode)) throw new Error(t('{db} does not support this duplicate handling mode', { db: d.label }));
   const verb = mode === 'insert' ? 'INSERT'
     : d.id === 'mysql' ? (mode === 'ignore' ? 'INSERT IGNORE' : 'REPLACE')
     : d.id === 'postgres' ? 'INSERT'
@@ -772,7 +773,7 @@ export async function bulkInsert(c: Connection, table: string, docs: Record<stri
   const cols: string[] = [];
   docs.forEach((doc) => Object.keys(doc).forEach((k) => { if (!cols.includes(k)) cols.push(k); }));
   const p: BulkProgress = { done: 0, total: docs.length, inserted: 0 };
-  if (!cols.length) return { ...p, error: 'No columns' };
+  if (!cols.length) return { ...p, error: t('No columns') };
   // SQL Server takes at most 2100 parameters and 1000 rows per VALUES
   const batch = Math.max(1, Math.min(opts.batch ?? 200, d.id === 'mssql' ? Math.floor(2000 / cols.length) : 1000));
   for (let i = 0; i < docs.length; i += batch) {

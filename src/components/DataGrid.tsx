@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { affinity, editText, isBlob, isBoolColumn, parseInput } from '../api/goapi';
 import type { ColumnInfo } from '../api/types';
+import { t, useLang } from '../i18n';
 
 /** A grid row: `key` is the rowid, or "new:<n>" for a row not yet inserted. */
 export interface GridRow {
@@ -83,12 +84,12 @@ export function DataGrid(p: GridProps) {
         <thead>
           <tr>
             <th className="lead">
-              {!p.readOnly && <input type="checkbox" checked={allSel} onChange={p.onToggleAll} aria-label="Select all" />}
+              {!p.readOnly && <input type="checkbox" checked={allSel} onChange={p.onToggleAll} aria-label={t('Select all')} />}
             </th>
             {p.columns.map((c) => (
               <th key={c.name} className={p.onSort ? 'sortable' : ''} onClick={() => p.onSort?.(c.name)} title={c.decl || c.type || ''}
                 aria-sort={p.sort?.col === c.name ? (p.sort.desc ? 'descending' : 'ascending') : undefined}>
-                {c.pk && <span className="pk-ico" title="Primary key">🔑</span>}
+                {c.pk && <span className="pk-ico" title={t('Primary key')}>🔑</span>}
                 {c.name}
                 {p.sort?.col === c.name && <span>{p.sort.desc ? ' ▼' : ' ▲'}</span>}
                 <span className="ctype">{[c.decl || c.type || 'ANY', c.notNull ? 'NOT NULL' : '', c.default ? `= ${c.default}` : ''].filter(Boolean).join(' · ')}</span>
@@ -104,7 +105,7 @@ export function DataGrid(p: GridProps) {
           ))}
         </tbody>
       </table>
-      {!p.rows.length && <div className="empty">No rows</div>}
+      {!p.rows.length && <div className="empty">{t('No rows')}</div>}
     </div>
   );
 }
@@ -116,12 +117,13 @@ const Row = memo(function Row({ r, columns, readOnly, edits, del, sel, editingCo
   r: GridRow; columns: ColumnInfo[]; readOnly: boolean; edits: Record<string, unknown> | undefined;
   del: boolean; sel: boolean; editingCol: string | null; h: RowHandlers;
 }) {
+  useLang(); // memoized: re-render on a language switch
   const e = edits ?? NO_EDITS;
   return (
     <tr className={[r.isNew ? 'new' : '', del ? 'deleted' : '', sel ? 'sel' : ''].join(' ')}>
       <td className="lead">
-        {!readOnly && <input type="checkbox" checked={sel} onChange={() => h.toggle(r.key)} aria-label="Select row" />}
-        <button className="rowbtn" title={readOnly ? 'Details' : 'Edit in form'} onClick={() => h.open(r)}>{readOnly ? '⤢' : '✎'}</button>
+        {!readOnly && <input type="checkbox" checked={sel} onChange={() => h.toggle(r.key)} aria-label={t('Select row')} />}
+        <button className="rowbtn" title={readOnly ? t('Details') : t('Edit in form')} onClick={() => h.open(r)}>{readOnly ? '⤢' : '✎'}</button>
       </td>
       {columns.map((c) => {
         const has = c.name in e;
@@ -142,7 +144,7 @@ const Row = memo(function Row({ r, columns, readOnly, edits, del, sel, editingCo
           );
         }
         const cls = ['cell', has ? 'edited' : '', a === 'INTEGER' || a === 'REAL' ? 'num' : '', canEdit ? '' : 'ro'].join(' ');
-        const placeholder = r.isNew && !has ? (c.pk && a === 'INTEGER' ? '(auto)' : c.default ? `default ${c.default}` : '') : '';
+        const placeholder = r.isNew && !has ? (c.pk && a === 'INTEGER' ? t('(auto)') : c.default ? t('default {value}', { value: c.default }) : '') : '';
         return (
           <td key={c.name} className={cls} title={cellText(v)} tabIndex={canEdit ? 0 : undefined}
             onClick={() => { if (canEdit) h.startEdit(r.key, c.name); }}
@@ -181,7 +183,7 @@ function CellEditor({ col, value, onCommit, onCancel, onError }: {
     return (
       <select ref={ref} value={value === null ? '' : String(Number(value) ? 1 : 0)} onKeyDown={onKey} onBlur={() => onCancel()}
         onChange={(e) => onCommit(e.target.value === '' ? null : Number(e.target.value))}>
-        <option value="">NULL</option><option value="1">true (1)</option><option value="0">false (0)</option>
+        <option value="">NULL</option><option value="1">{t('true (1)')}</option><option value="0">{t('false (0)')}</option>
       </select>
     );
   }
@@ -193,7 +195,7 @@ function CellEditor({ col, value, onCommit, onCancel, onError }: {
         onChange={(e) => { setIsNull(false); setText(e.target.value); }}
         onKeyDown={onKey} onBlur={() => commit()} />
       {!col.notNull && !col.pk && (
-        <button type="button" className="btn sm ghost" style={{ minHeight: 0, borderRadius: 0, border: 0 }} title="Set to NULL"
+        <button type="button" className="btn sm ghost" style={{ minHeight: 0, borderRadius: 0, border: 0 }} title={t('Set to NULL')}
           onMouseDown={(e) => { e.preventDefault(); onCommit(null); }}>NULL</button>
       )}
     </div>

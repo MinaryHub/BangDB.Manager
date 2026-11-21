@@ -1,4 +1,5 @@
 /** Helpers for exporting and importing documents (pure, unit-tested). */
+import { t } from '../i18n';
 
 export function toCsv(rows: Record<string, unknown>[]): string {
   const cols: string[] = [];
@@ -15,33 +16,33 @@ export function toCsv(rows: Record<string, unknown>[]): string {
  * Returns the documents or throws with a line-aware message.
  */
 export function parseDocuments(text: string): Record<string, unknown>[] {
-  const t = text.trim();
-  if (!t) return [];
-  if (t.startsWith('[')) {
-    const arr = JSON.parse(t);
-    if (!Array.isArray(arr)) throw new Error('Not a JSON array');
+  const src = text.trim();
+  if (!src) return [];
+  if (src.startsWith('[')) {
+    const arr = JSON.parse(src);
+    if (!Array.isArray(arr)) throw new Error(t('Not a JSON array'));
     return arr.map(asDoc);
   }
-  if (t.startsWith('{')) {
+  if (src.startsWith('{')) {
     try {
-      return [asDoc(JSON.parse(t))];
+      return [asDoc(JSON.parse(src))];
     } catch {
       /* fall through to JSONL */
     }
   }
-  return t.split(/\r?\n/).map((line, i) => {
+  return src.split(/\r?\n/).map((line, i) => {
     const l = line.trim();
     if (!l) return null;
     try {
       return asDoc(JSON.parse(l));
     } catch (e) {
-      throw new Error(`line ${i + 1}: ${(e as Error).message}`);
+      throw new Error(t('line {n}: {error}', { n: i + 1, error: (e as Error).message }));
     }
   }).filter((d): d is Record<string, unknown> => d !== null);
 }
 
 function asDoc(v: unknown): Record<string, unknown> {
-  if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('Some items are not objects');
+  if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error(t('Some items are not objects'));
   return v as Record<string, unknown>;
 }
 

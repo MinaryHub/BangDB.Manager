@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { tx } from './i18n';
 import { isElectron } from './platform';
 
 /** Where the project lives: releases, issues and sponsorship all point here. */
@@ -19,7 +20,7 @@ export function platform(): Platform {
 }
 
 export const PLATFORM_LABEL: Record<Platform, string> = {
-  desktop: 'Desktop app', android: 'Android app', ios: 'iOS app', pwa: 'Installed web app (PWA)', web: 'Web browser'
+  desktop: tx('Desktop app'), android: tx('Android app'), ios: tx('iOS app'), pwa: tx('Installed web app (PWA)'), web: tx('Web browser')
 };
 
 /** Operating system and browser in one short line, for bug reports. */

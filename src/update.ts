@@ -10,6 +10,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { APP_VERSION, REPO, platform } from './appinfo';
+import { t } from './i18n';
 
 export type UpdateStatus = 'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error' | 'unsupported';
 
@@ -82,7 +83,7 @@ export function downloadFor(rel: Release, p: string, ua = typeof navigator !== '
 /** Published releases, newest first (GitHub's REST API, no token: 60 requests an hour per IP). */
 export async function fetchReleases(limit = 30): Promise<Release[]> {
   const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=${limit}`, { headers: { Accept: 'application/vnd.github+json' } });
-  if (!res.ok) throw new Error(res.status === 403 ? 'GitHub rate limit reached — try again later' : `GitHub answered ${res.status}`);
+  if (!res.ok) throw new Error(res.status === 403 ? t('GitHub rate limit reached — try again later') : t('GitHub answered {status}', { status: res.status }));
   const list = (await res.json()) as Release[];
   return list.filter((r) => !r.draft).sort((a, b) => compareVersions(b.tag_name, a.tag_name));
 }
@@ -192,7 +193,7 @@ export async function checkForUpdates(): Promise<void> {
     while (Date.now() < deadline && swReg.installing) await new Promise((r) => setTimeout(r, 250));
     if (getUpdateState().status === 'checking') set({ status: swReg.waiting ? 'ready' : 'none', checkedAt: Date.now() });
   } catch (e) {
-    set({ status: 'error', error: navigator.onLine === false ? 'You are offline' : (e as Error).message });
+    set({ status: 'error', error: navigator.onLine === false ? t('You are offline') : (e as Error).message });
   }
 }
 

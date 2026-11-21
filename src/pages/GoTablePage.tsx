@@ -13,6 +13,7 @@ import { RowForm } from '../components/RowForm';
 import { AddColumnModal, AlterColumnModal, CreateIndexForm, CreateViewModal } from '../components/SchemaForms';
 import { DataTable, Modal, useConfirm, usePrompt, useToast } from '../components/ui';
 import { useDbConnection } from '../store/store';
+import { t, tp } from '../i18n';
 
 type Tab = 'data' | 'structure' | 'index' | 'transfer' | 'ddl';
 
@@ -40,24 +41,24 @@ export default function GoTablePage() {
   const loadCount = useCallback(async () => { if (conn) { const n = await countWhere(conn, table); setCounted({ at, n }); } }, [conn, table, at]);
   useEffect(() => { loadInfo(); loadCount(); }, [loadInfo, loadCount]);
 
-  if (!conn) return <div className="empty">Connection not found.</div>;
+  if (!conn) return <div className="empty">{t('Connection not found.')}</div>;
   const d = dialectOf(conn);
   const base = `/c/${conn.id}/db/${encodeURIComponent(db)}`;
   const isView = info?.kind === 'view';
   const tabs: [Tab, string][] = isView
-    ? [['data', 'Data'], ['transfer', 'Export'], ['ddl', 'Definition']]
-    : [['data', 'Data'], ['structure', 'Schema'], ['index', `Indexes${info?.indexes?.length ? ` (${info.indexes.length})` : ''}`], ['transfer', 'Import & export'], ['ddl', 'DDL']];
+    ? [['data', t('Data')], ['transfer', t('Export')], ['ddl', t('Definition')]]
+    : [['data', t('Data')], ['structure', t('Schema')], ['index', info?.indexes?.length ? t('Indexes ({n})', { n: info.indexes.length }) : t('Indexes')], ['transfer', t('Import & export')], ['ddl', 'DDL']];
 
   return (
     <>
-      <TopBar title={table} crumbs={[{ to: `/c/${conn.id}/dbs`, label: conn.name }, { to: base, label: conn.db && conn.kind !== 'sqlite' ? db : 'Tables' }]}
+      <TopBar title={table} crumbs={[{ to: `/c/${conn.id}/dbs`, label: conn.name }, { to: base, label: conn.db && conn.kind !== 'sqlite' ? db : t('Tables') }]}
         right={<>
-          {isView && <span className="badge accent">View</span>}
-          {info?.store && <span className="badge accent">{info.store === 'memory' ? 'In-memory' : info.store === 'timeseries' ? 'Time series' : info.store}</span>}
-          <span className="badge">{total === undefined ? '…' : `${total.toLocaleString()} rows`}</span>
+          {isView && <span className="badge accent">{t('View')}</span>}
+          {info?.store && <span className="badge accent">{info.store === 'memory' ? t('In-memory') : info.store === 'timeseries' ? t('Time series') : info.store}</span>}
+          <span className="badge">{total === undefined ? '…' : tp(total, '{n} row', '{n} rows')}</span>
           <button className="btn sm" onClick={() => nav(`${base}/query`, { state: { sql: d.page(`SELECT * FROM ${d.qt(table)}`, '', 100, 0) } })}>SQL</button>
         </>} />
-      {info === null && <div className="card danger">{infoErr || 'Could not load table info.'}</div>}
+      {info === null && <div className="card danger">{infoErr || t('Could not load table info.')}</div>}
       {info && (
         <div key={`${db}/${table}`}>
           <div className="tabs">
@@ -176,7 +177,7 @@ function DataTab({ conn, table, info, onChanged }: TabProps) {
   }, [pending]);
 
   async function guard(): Promise<boolean> {
-    return !pending || confirm(`Discard ${pending} unsaved change(s) and leave?`, 'Discard').then((ok) => { if (ok) reset(); return ok; });
+    return !pending || confirm(tp(pending, 'Discard {n} unsaved change and leave?', 'Discard {n} unsaved changes and leave?'), t('Discard')).then((ok) => { if (ok) reset(); return ok; });
   }
   async function go(p: Partial<PageState>) { if (await guard()) setPg((x) => ({ ...x, ...p })); }
 
@@ -209,7 +210,7 @@ function DataTab({ conn, table, info, onChanged }: TabProps) {
   async function commit(changes: RowChange[], msg: string): Promise<boolean> {
     try {
       const r = await applyChanges(conn, table, changes, ident);
-      if (!r.ok) { toast(`Save failed — nothing was applied: ${errorText(r)}`, 'err'); return false; }
+      if (!r.ok) { toast(t('Save failed — nothing was applied: {error}', { error: errorText(r) }), 'err'); return false; }
       toast(msg, 'ok');
       return true;
     } catch (e) { toast((e as Error).message, 'err'); return false; }
@@ -222,7 +223,7 @@ function DataTab({ conn, table, info, onChanged }: TabProps) {
       ...[...inserts].reverse().map((k) => ({ kind: 'insert' as const, values: edits[k] ?? {} }))
     ];
     setSaving(true);
-    const ok = await commit(changes, `Saved — ${nEdits} edited · ${inserts.length} added · ${deleted.size} deleted`);
+    const ok = await commit(changes, t('Saved — {edited} edited · {added} added · {deleted} deleted', { edited: nEdits, added: inserts.length, deleted: deleted.size }));
     setSaving(false);
     if (ok) { reset(); refresh(); onChanged(); }
   }
@@ -237,15 +238,15 @@ function DataTab({ conn, table, info, onChanged }: TabProps) {
   // pending — then Enter is needed, so typing never pops a discard prompt
   useEffect(() => {
     if (searchIn === pg.search || pending) return;
-    const t = setTimeout(() => setPg((x) => ({ ...x, search: searchIn, offset: 0 })), 400);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setPg((x) => ({ ...x, search: searchIn, offset: 0 })), 400);
+    return () => clearTimeout(timer);
   }, [searchIn, pg.search, pending]);
 
   const searchRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || t?.closest('input, textarea, select, [contenteditable="true"], .modal')) return;
+      const el = e.target as HTMLElement | null;
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || el?.closest('input, textarea, select, [contenteditable="true"], .modal')) return;
       e.preventDefault();
       searchRef.current?.focus();
       searchRef.current?.select();
@@ -268,33 +269,33 @@ function DataTab({ conn, table, info, onChanged }: TabProps) {
   return (
     <>
       <div className="toolbar">
-        <input ref={searchRef} type="search" className="inp filter" placeholder="Quick search (text columns)  —  press / to focus" value={searchIn} onChange={(e) => setSearchIn(e.target.value)}
+        <input ref={searchRef} type="search" className="inp filter" placeholder={t('Quick search (text columns)  —  press / to focus')} value={searchIn} onChange={(e) => setSearchIn(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') go({ search: searchIn, offset: 0 }); else if (e.key === 'Escape' && searchIn) { e.preventDefault(); setSearchIn(''); } }} />
-        <input className="inp filter mono" placeholder="WHERE clause  e.g. age > 30 AND name LIKE 'k%'" value={whereIn} onChange={(e) => setWhereIn(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && go({ where: whereIn, offset: 0 })} />
-        <button className="btn sm primary" onClick={() => go({ where: whereIn, search: searchIn, offset: 0 })} disabled={busy}>{busy ? '…' : 'Load'}</button>
-        {(pg.where || pg.search) && <button className="btn sm ghost" onClick={() => { setWhereIn(''); setSearchIn(''); go({ where: '', search: '', offset: 0 }); }}>Clear filters</button>}
+        <input className="inp filter mono" placeholder={t("WHERE clause  e.g. age > 30 AND name LIKE 'k%'")} value={whereIn} onChange={(e) => setWhereIn(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && go({ where: whereIn, offset: 0 })} />
+        <button className="btn sm primary" onClick={() => go({ where: whereIn, search: searchIn, offset: 0 })} disabled={busy}>{busy ? '…' : t('Load')}</button>
+        {(pg.where || pg.search) && <button className="btn sm ghost" onClick={() => { setWhereIn(''); setSearchIn(''); go({ where: '', search: '', offset: 0 }); }}>{t('Clear filters')}</button>}
       </div>
       <div className="toolbar">
-        {!readOnly && <button className="btn sm primary" onClick={addRow}>+ Add row</button>}
-        {!readOnly && <button className="btn sm" onClick={() => setForm({ isNew: true, values: {} })}>+ Add with form</button>}
-        {!readOnly && selected.size > 0 && <button className="btn sm danger" onClick={deleteSelected}>{[...selected].every((k) => deleted.has(k)) ? `Undo delete (${selected.size})` : `Delete selected (${selected.size})`}</button>}
+        {!readOnly && <button className="btn sm primary" onClick={addRow}>{t('+ Add row')}</button>}
+        {!readOnly && <button className="btn sm" onClick={() => setForm({ isNew: true, values: {} })}>{t('+ Add with form')}</button>}
+        {!readOnly && selected.size > 0 && <button className="btn sm danger" onClick={deleteSelected}>{[...selected].every((k) => deleted.has(k)) ? t('Undo delete ({n})', { n: selected.size }) : t('Delete selected ({n})', { n: selected.size })}</button>}
         <span className="grow" />
         <div className="pager">
-          <span>{matched === undefined ? '' : `${from.toLocaleString()}–${to.toLocaleString()} / ${matched.toLocaleString()} rows`}</span>
-          <button className="btn sm ghost" disabled={pg.offset === 0} onClick={() => go({ offset: 0 })} title="First">«</button>
-          <button className="btn sm ghost" disabled={pg.offset === 0} onClick={() => go({ offset: Math.max(0, pg.offset - pg.limit) })} title="Previous">‹</button>
-          <button className="btn sm ghost" disabled={matched !== undefined ? to >= matched : rawRows.length < pg.limit} onClick={() => go({ offset: pg.offset + pg.limit })} title="Next">›</button>
-          <button className="btn sm ghost" disabled={matched === undefined || to >= matched} onClick={() => matched && go({ offset: Math.floor((matched - 1) / pg.limit) * pg.limit })} title="Last">»</button>
+          <span>{matched === undefined ? '' : t('{from}–{to} / {total} rows', { from: from.toLocaleString(), to: to.toLocaleString(), total: matched.toLocaleString() })}</span>
+          <button className="btn sm ghost" disabled={pg.offset === 0} onClick={() => go({ offset: 0 })} title={t('First')}>«</button>
+          <button className="btn sm ghost" disabled={pg.offset === 0} onClick={() => go({ offset: Math.max(0, pg.offset - pg.limit) })} title={t('Previous')}>‹</button>
+          <button className="btn sm ghost" disabled={matched !== undefined ? to >= matched : rawRows.length < pg.limit} onClick={() => go({ offset: pg.offset + pg.limit })} title={t('Next')}>›</button>
+          <button className="btn sm ghost" disabled={matched === undefined || to >= matched} onClick={() => matched && go({ offset: Math.floor((matched - 1) / pg.limit) * pg.limit })} title={t('Last')}>»</button>
           <select className="inp" value={pg.limit} onChange={(e) => go({ limit: Number(e.target.value), offset: 0 })} style={{ minHeight: 32, padding: '4px 6px' }}>
-            {[25, 50, 100, 200, 500].map((n) => <option key={n} value={n}>{n} per page</option>)}
+            {[25, 50, 100, 200, 500].map((n) => <option key={n} value={n}>{t('{n} per page', { n })}</option>)}
           </select>
-          <button className="btn sm ghost" onClick={async () => { if (await guard()) refresh(); }} title="Refresh">↻</button>
-          {shownRows.length > 0 && <button className="btn sm ghost" onClick={() => downloadText(`${table}-${stamp()}.csv`, '﻿' + toCsv(shownRows), 'text/csv')} title="Current page as CSV">CSV</button>}
+          <button className="btn sm ghost" onClick={async () => { if (await guard()) refresh(); }} title={t('Refresh')}>↻</button>
+          {shownRows.length > 0 && <button className="btn sm ghost" onClick={() => downloadText(`${table}-${stamp()}.csv`, '﻿' + toCsv(shownRows), 'text/csv')} title={t('Current page as CSV')}>CSV</button>}
         </div>
       </div>
       {err && <div className="card danger">{err}</div>}
-      {unsafeIds && <p className="warn small">rowid exceeds the JavaScript integer range, so rows cannot be edited here. Use the SQL console.</p>}
-      {!isView && !ident && <p className="warn small">This table has no primary key, so rows cannot be identified and it is read-only. Add a primary key (or a UNIQUE NOT NULL column) in the Schema tab, or use the SQL console.</p>}
+      {unsafeIds && <p className="warn small">{t('rowid exceeds the JavaScript integer range, so rows cannot be edited here. Use the SQL console.')}</p>}
+      {!isView && !ident && <p className="warn small">{t('This table has no primary key, so rows cannot be identified and it is read-only. Add a primary key (or a UNIQUE NOT NULL column) in the Schema tab, or use the SQL console.')}</p>}
       {!err && (
         <DataGrid columns={columns} rows={rows} readOnly={readOnly} edits={edits} deleted={deleted} selected={selected}
           sort={pg.orderBy ? { col: pg.orderBy, desc: pg.desc } : undefined} onSort={sortBy}
@@ -303,34 +304,34 @@ function DataTab({ conn, table, info, onChanged }: TabProps) {
           onToggleAll={() => setSelected((s) => (rows.every((r) => s.has(r.key)) ? new Set() : new Set(rows.map((r) => r.key))))}
           onOpenRow={(r) => setForm({ key: r.key, isNew: !!r.isNew, values: { ...r.values, ...(edits[r.key] ?? {}) } })} />
       )}
-      {!readOnly && !pending && rows.length > 0 && <p className="muted small">Click a cell to edit in place — Enter: next row, Tab: next cell, Esc: cancel. Changes are saved together in one transaction. ✎ opens the form editor.</p>}
-      {data?.truncated && <p className="warn small">Results were truncated by the server row limit. Reduce the page size.</p>}
+      {!readOnly && !pending && rows.length > 0 && <p className="muted small">{t('Click a cell to edit in place — Enter: next row, Tab: next cell, Esc: cancel. Changes are saved together in one transaction. ✎ opens the form editor.')}</p>}
+      {data?.truncated && <p className="warn small">{t('Results were truncated by the server row limit. Reduce the page size.')}</p>}
       {pending > 0 && (
         <div className="savebar">
-          <span className="grow">Unsaved changes: <b>{nEdits} edited</b> · <b className="ok">{inserts.length} added</b> · <b className="danger">{deleted.size} deleted</b></span>
-          <button className="btn sm" onClick={reset} disabled={saving}>Discard all</button>
-          <button className="btn sm primary" onClick={saveAll} disabled={saving}>{saving ? 'Saving…' : 'Save changes (Ctrl+S)'}</button>
+          <span className="grow">{t('Unsaved changes:')} <b>{t('{n} edited', { n: nEdits })}</b> · <b className="ok">{t('{n} added', { n: inserts.length })}</b> · <b className="danger">{t('{n} deleted', { n: deleted.size })}</b></span>
+          <button className="btn sm" onClick={reset} disabled={saving}>{t('Discard all')}</button>
+          <button className="btn sm primary" onClick={saveAll} disabled={saving}>{saving ? t('Saving…') : t('Save changes (Ctrl+S)')}</button>
         </div>
       )}
       {form && (
         <RowForm columns={columns} values={form.values} isNew={form.isNew} readOnly={readOnly}
-          title={form.isNew ? 'New row' : readOnly ? 'View row' : ident?.kind === 'pk' ? `Edit row (${ident.columns.join(', ')} = ${JSON.parse(form.key!).join(', ')})` : `Edit row (${ident?.kind === 'ctid' ? 'ctid' : 'rowid'} ${form.key})`}
+          title={form.isNew ? t('New row') : readOnly ? t('View row') : ident?.kind === 'pk' ? t('Edit row ({key})', { key: `${ident.columns.join(', ')} = ${JSON.parse(form.key!).join(', ')}` }) : t('Edit row ({key})', { key: `${ident?.kind === 'ctid' ? 'ctid' : 'rowid'} ${form.key}` })}
           onClose={() => setForm(null)}
           onSubmit={readOnly ? undefined : async (values) => {
             if (form.isNew) {
-              const ok = await commit([{ kind: 'insert', values }], 'Row added');
+              const ok = await commit([{ kind: 'insert', values }], t('Row added'));
               if (ok) {
                 if (form.key) { setInserts((l) => l.filter((k) => k !== form.key)); setEdits((e) => { const n = { ...e }; delete n[form.key!]; return n; }); }
                 refresh(); onChanged();
               }
               return ok;
             }
-            const ok = await commit([{ kind: 'update', ...refOf(form.key!), values }], 'Saved');
+            const ok = await commit([{ kind: 'update', ...refOf(form.key!), values }], t('Saved'));
             if (ok) { setEdits((e) => { const n = { ...e }; delete n[form.key!]; return n; }); load(); }
             return ok;
           }}
           onDelete={readOnly || form.isNew ? undefined : async () => {
-            const ok = await commit([{ kind: 'delete', ...refOf(form.key!) }], 'Row deleted');
+            const ok = await commit([{ kind: 'delete', ...refOf(form.key!) }], t('Row deleted'));
             if (ok) { refresh(); onChanged(); }
             return ok;
           }}
@@ -356,7 +357,7 @@ function StructureTab({ conn, table, info, base, onChanged }: TabProps & { base:
 
   async function run(sql: string | string[], ok: string): Promise<boolean> {
     const r = await execStatements(conn, Array.isArray(sql) ? sql : [sql]);
-    if (!r.ok) { toast(`Failed: ${errorText(r)}`, 'err'); return false; }
+    if (!r.ok) { toast(t('Failed: {error}', { error: errorText(r) }), 'err'); return false; }
     toast(ok, 'ok'); onChanged(); return true;
   }
 
@@ -364,12 +365,12 @@ function StructureTab({ conn, table, info, base, onChanged }: TabProps & { base:
     <>
       <div className="card">
         <div className="row" style={{ marginBottom: 8 }}>
-          <b className="grow">Columns ({info.columns?.length ?? 0})</b>
-          <button className="btn sm primary" onClick={() => setAdding(true)}>+ Add column</button>
+          <b className="grow">{t('Columns ({n})', { n: info.columns?.length ?? 0 })}</b>
+          <button className="btn sm primary" onClick={() => setAdding(true)}>{t('+ Add column')}</button>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table className="coltable">
-            <thead><tr><th>#</th><th>Name</th><th>Declared type</th><th>Storage</th><th>Constraints</th><th /></tr></thead>
+            <thead><tr><th>#</th><th>{t('Name')}</th><th>{t('Declared type')}</th><th>{t('Storage')}</th><th>{t('Constraints')}</th><th /></tr></thead>
             <tbody>
               {(info.columns ?? []).map((c, i) => (
                 <tr key={c.name}>
@@ -388,16 +389,16 @@ function StructureTab({ conn, table, info, base, onChanged }: TabProps & { base:
                     </div>
                   </td>
                   <td className="acts">
-                    {d.alterColumn && <button className="btn sm ghost" onClick={() => setAltering(c)}>Edit</button>}
+                    {d.alterColumn && <button className="btn sm ghost" onClick={() => setAltering(c)}>{t('Edit')}</button>}
                     <button className="btn sm ghost" onClick={async () => {
-                      const to = await prompt('Rename column', `${c.name} →`, c.name);
-                      if (to && to !== c.name) run(d.renameColumn(table, c.name, to), `Column renamed: ${c.name} → ${to}`);
-                    }}>Rename</button>
+                      const to = await prompt(t('Rename column'), `${c.name} →`, c.name);
+                      if (to && to !== c.name) run(d.renameColumn(table, c.name, to), t('Column renamed: {from} → {to}', { from: c.name, to }));
+                    }}>{t('Rename')}</button>
                     <button className="btn sm danger" onClick={async () => {
-                      if (!(await confirm(`Delete column "${c.name}" and all of its values.`))) return;
+                      if (!(await confirm(t('Delete column "{name}" and all of its values.', { name: c.name }), t('Delete')))) return;
                       const r = await dropColumn(conn, table, c.name);
-                      if (r.ok) { toast(`Column "${c.name}" deleted`, 'ok'); onChanged(); } else toast(`Delete failed: ${errorText(r)}`, 'err');
-                    }}>Delete</button>
+                      if (r.ok) { toast(t('Column "{name}" deleted', { name: c.name }), 'ok'); onChanged(); } else toast(t('Delete failed: {error}', { error: errorText(r) }), 'err');
+                    }}>{t('Delete')}</button>
                   </td>
                 </tr>
               ))}
@@ -408,47 +409,47 @@ function StructureTab({ conn, table, info, base, onChanged }: TabProps & { base:
 
       {(constraints.length > 0 || storage) && (
         <div className="card">
-          <b>Table constraints · storage</b>
+          <b>{t('Table constraints · storage')}</b>
           <div className="list" style={{ marginTop: 8 }}>
             {storage && <div className="mono small">{storage}</div>}
             {constraints.map((c, i) => <div key={i} className="mono small">{c}</div>)}
           </div>
           <p className="muted small" style={{ marginBottom: 0 }}>{d.id === 'bangdb' || d.id === 'sqlite'
-            ? 'To change constraints, create a new table from the definition in the DDL tab and move the data over (INSERT INTO new SELECT * FROM old).'
-            : 'Constraints can be added or dropped in the SQL console with ALTER TABLE … ADD / DROP CONSTRAINT.'}</p>
+            ? t('To change constraints, create a new table from the definition in the DDL tab and move the data over (INSERT INTO new SELECT * FROM old).')
+            : t('Constraints can be added or dropped in the SQL console with ALTER TABLE … ADD / DROP CONSTRAINT.')}</p>
         </div>
       )}
 
       <div className="card">
-        <b>Table actions</b>
+        <b>{t('Table actions')}</b>
         <div className="row wrap" style={{ marginTop: 10 }}>
           <button className="btn sm" onClick={async () => {
-            const to = await prompt('Rename table', `${table} →`, table);
+            const to = await prompt(t('Rename table'), `${table} →`, table);
             if (!to || to === table) return;
             const r = await renameTable(conn, table, to);
-            if (r.ok) { toast(`Renamed to ${to}`, 'ok'); nav(`${base}/t/${encodeURIComponent(to)}`, { replace: true }); } else toast(`Failed: ${errorText(r)}`, 'err');
-          }}>Rename</button>
-          <button className="btn sm" onClick={async () => { const r = await analyze(conn, table); toast(r.ok ? 'ANALYZE complete — index statistics updated' : `Failed: ${errorText(r)}`, r.ok ? 'ok' : 'err'); if (r.ok) onChanged(); }}>ANALYZE (update stats)</button>
+            if (r.ok) { toast(t('Renamed to {name}', { name: to }), 'ok'); nav(`${base}/t/${encodeURIComponent(to)}`, { replace: true }); } else toast(t('Failed: {error}', { error: errorText(r) }), 'err');
+          }}>{t('Rename')}</button>
+          <button className="btn sm" onClick={async () => { const r = await analyze(conn, table); toast(r.ok ? t('ANALYZE complete — index statistics updated') : t('Failed: {error}', { error: errorText(r) }), r.ok ? 'ok' : 'err'); if (r.ok) onChanged(); }}>{t('ANALYZE (update stats)')}</button>
           <button className="btn sm" onClick={async () => {
-            const to = await prompt('Duplicate table', d.copyTable ? 'New table name (copies schema and data)' : 'New table name (schema from the definition SQL, data via INSERT … SELECT)', `${table}_copy`);
+            const to = await prompt(t('Duplicate table'), d.copyTable ? t('New table name (copies schema and data)') : t('New table name (schema from the definition SQL, data via INSERT … SELECT)'), `${table}_copy`);
             if (!to) return;
             const stmts = d.copyTable ? d.copyTable(table, to) : [...copyDdl(info.sql ?? '', table, to, d), `INSERT INTO ${d.qt(to)} SELECT * FROM ${d.qt(table)}`];
-            if (await run(stmts, `Duplicated as "${to}"${d.id === 'mssql' ? ' (SELECT INTO in SQL Server does not copy constraints or indexes)' : ''}`)) nav(`${base}/t/${encodeURIComponent(to)}`);
-          }}>Duplicate</button>
+            if (await run(stmts, d.id === 'mssql' ? t('Duplicated as "{name}" (SELECT INTO in SQL Server does not copy constraints or indexes)', { name: to }) : t('Duplicated as "{name}"', { name: to }))) nav(`${base}/t/${encodeURIComponent(to)}`);
+          }}>{t('Duplicate')}</button>
           <span className="grow" />
           <button className="btn sm danger" onClick={async () => {
-            if (!(await confirm(`Delete all rows of "${table}" (DELETE FROM). The schema is kept.`, 'Delete all'))) return;
-            run(`DELETE FROM ${d.qt(table)}`, 'All rows deleted');
-          }}>Delete all rows</button>
+            if (!(await confirm(t('Delete all rows of "{name}" (DELETE FROM). The schema is kept.', { name: table }), t('Delete all')))) return;
+            run(`DELETE FROM ${d.qt(table)}`, t('All rows deleted'));
+          }}>{t('Delete all rows')}</button>
           <button className="btn sm danger" onClick={async () => {
-            if (!(await confirm(`Drop table "${table}". All data and indexes will be lost.`))) return;
+            if (!(await confirm(t('Drop table "{name}". All data and indexes will be lost.', { name: table }), t('Delete')))) return;
             const r = await dropTable(conn, table);
-            if (r.ok) { toast(`"${table}" deleted`, 'ok'); nav(base, { replace: true }); } else toast(`Delete failed: ${errorText(r)}`, 'err');
+            if (r.ok) { toast(t('"{name}" deleted', { name: table }), 'ok'); nav(base, { replace: true }); } else toast(t('Delete failed: {error}', { error: errorText(r) }), 'err');
           }}>DROP TABLE</button>
         </div>
       </div>
-      {adding && <AddColumnModal table={table} d={d} onClose={() => setAdding(false)} onAdd={(sqls) => run(sqls, 'Column added')} />}
-      {altering && <AlterColumnModal table={table} col={altering} d={d} onClose={() => setAltering(null)} onRun={(sqls) => run(sqls, `Column "${altering.name}" updated`)} />}
+      {adding && <AddColumnModal table={table} d={d} onClose={() => setAdding(false)} onAdd={(sqls) => run(sqls, t('Column added'))} />}
+      {altering && <AlterColumnModal table={table} col={altering} d={d} onClose={() => setAltering(null)} onRun={(sqls) => run(sqls, t('Column "{name}" updated', { name: altering.name }))} />}
       {confirmEl}{promptEl}
     </>
   );
@@ -479,33 +480,33 @@ function IndexTab({ conn, table, info, onChanged }: TabProps) {
   return (
     <>
       <div className="card">
-        <b>Indexes ({idx.length})</b>
+        <b>{t('Indexes ({n})', { n: idx.length })}</b>
         <div className="list" style={{ marginTop: 8 }}>
           {idx.map((i) => (
             <div key={i.name} className="item">
               <div className="grow">
-                <div className="title mono">{i.name}{i.unique && <span className="badge warn" style={{ marginLeft: 6 }}>UNIQUE</span>}{i.auto && <span className="badge" style={{ marginLeft: 6 }}>Auto (PK/UNIQUE constraint)</span>}</div>
+                <div className="title mono">{i.name}{i.unique && <span className="badge warn" style={{ marginLeft: 6 }}>UNIQUE</span>}{i.auto && <span className="badge" style={{ marginLeft: 6 }}>{t('Auto (PK/UNIQUE constraint)')}</span>}</div>
                 <div className="sub mono">({(i.columns ?? [i.column]).join(', ')}){(i as { stats?: number[] }).stats?.length ? ` · Stats: ${(i as { stats?: number[] }).stats!.map((s) => s.toFixed(1)).join(' / ')}` : ''}</div>
               </div>
               {!i.auto && <button className="btn sm danger" onClick={async () => {
-                if (!(await confirm(`Delete index "${i.name}"?`))) return;
+                if (!(await confirm(t('Delete index "{name}"?', { name: i.name }), t('Delete')))) return;
                 const r = await dropIndex(conn, i.name, table);
-                toast(r.ok ? 'Index deleted' : `Failed: ${errorText(r)}`, r.ok ? 'ok' : 'err'); if (r.ok) onChanged();
-              }}>Delete</button>}
+                toast(r.ok ? t('Index deleted') : t('Failed: {error}', { error: errorText(r) }), r.ok ? 'ok' : 'err'); if (r.ok) onChanged();
+              }}>{t('Delete')}</button>}
             </div>
           ))}
-          {!idx.length && <div className="muted small">No indexes</div>}
+          {!idx.length && <div className="muted small">{t('No indexes')}</div>}
         </div>
       </div>
-      {ts ? <p className="muted small">Time-series tables do not support secondary indexes — time conditions are handled by a time-range scan.</p> : (
+      {ts ? <p className="muted small">{t('Time-series tables do not support secondary indexes — time conditions are handled by a time-range scan.')}</p> : (
         <CreateIndexForm table={table} columns={info.columns ?? []} d={dialectOf(conn)} onCreate={async (sql) => {
           const r = await goQuery(conn, sql, undefined, { mode: 'exec' });
-          toast(r.ok ? 'Index created' : `Failed: ${errorText(r)}`, r.ok ? 'ok' : 'err');
+          toast(r.ok ? t('Index created') : t('Failed: {error}', { error: errorText(r) }), r.ok ? 'ok' : 'err');
           if (r.ok) onChanged();
           return r.ok;
         }} />
       )}
-      <p className="muted small">Check whether an index is used with EXPLAIN in the SQL console. Indexes are recommended on foreign key columns.</p>
+      <p className="muted small">{t('Check whether an index is used with EXPLAIN in the SQL console. Indexes are recommended on foreign key columns.')}</p>
       {confirmEl}
     </>
   );
@@ -521,20 +522,20 @@ function TransferTab({ conn, table, info, onChanged }: TabProps) {
   const [exporting, setExporting] = useState('');
 
   async function doExport() {
-    setExporting('Reading…');
+    setExporting(t('Reading…'));
     try {
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
       if (fmt === 'sql' && !where.trim()) {
         downloadText(`${table}-${stamp}.sql`, await dumpSql(conn, setExporting, [table]), 'application/sql');
       } else {
         const d = dialectOf(conn);
-        const { columns, rows } = await readAll(conn, table, { onPage: (n) => setExporting(`${n.toLocaleString()} rows read…`), where, ident: identityOf(d, info) });
+        const { columns, rows } = await readAll(conn, table, { onPage: (n) => setExporting(tp(n, '{n} row read…', '{n} rows read…')), where, ident: identityOf(d, info) });
         const docs = rows.map((r) => Object.fromEntries(columns.map((c, i) => [c, r[i]])));
         if (fmt === 'csv') downloadText(`${table}-${stamp}.csv`, '﻿' + toCsv(docs), 'text/csv');
         else if (fmt === 'json') downloadText(`${table}-${stamp}.json`, JSON.stringify(docs, null, 2));
         else if (fmt === 'jsonl') downloadText(`${table}-${stamp}.jsonl`, docs.map((x) => JSON.stringify(x)).join('\n'));
         else downloadText(`${table}-${stamp}.sql`, rows.map((r) => `INSERT INTO ${d.qt(table)} (${columns.map(d.q).join(', ')}) VALUES (${r.map(d.literal).join(', ')});`).join('\n'), 'application/sql');
-        toast(`${docs.length} rows exported`, 'ok');
+        toast(tp(docs.length, '{n} row exported', '{n} rows exported'), 'ok');
       }
     } catch (e) { toast((e as Error).message, 'err'); } finally { setExporting(''); }
   }
@@ -542,15 +543,15 @@ function TransferTab({ conn, table, info, onChanged }: TabProps) {
   return (
     <>
       <div className="card">
-        <b>Export</b>
+        <b>{t('Export')}</b>
         <div className="row wrap" style={{ marginTop: 10 }}>
           <div className="seg">
             {(['csv', 'json', 'jsonl', 'sql'] as const).map((f) => <button key={f} className={fmt === f ? 'on' : ''} onClick={() => setFmt(f)}>{f.toUpperCase()}</button>)}
           </div>
-          <input className="inp mono grow" placeholder="WHERE clause (optional, blank for all rows)" value={where} onChange={(e) => setWhere(e.target.value)} />
-          <button className="btn primary sm" disabled={!!exporting} onClick={doExport}>{exporting || 'Export'}</button>
+          <input className="inp mono grow" placeholder={t('WHERE clause (optional, blank for all rows)')} value={where} onChange={(e) => setWhere(e.target.value)} />
+          <button className="btn primary sm" disabled={!!exporting} onClick={doExport}>{exporting || t('Export')}</button>
         </div>
-        <p className="muted small" style={{ marginBottom: 0 }}>{fmt === 'sql' ? (where.trim() ? 'Generates INSERT statements for the matching rows.' : `Generates the CREATE TABLE and index definitions plus INSERT statements for all rows. It can be restored on another ${dialectOf(conn).label} with "Run SQL script".`) : 'Reads everything in batches of 500 rows (by key when the table has one, so large tables stay fast), regardless of the server row limit.'}</p>
+        <p className="muted small" style={{ marginBottom: 0 }}>{fmt === 'sql' ? (where.trim() ? t('Generates INSERT statements for the matching rows.') : t('Generates the CREATE TABLE and index definitions plus INSERT statements for all rows. It can be restored on another {db} with "Run SQL script".', { db: dialectOf(conn).label })) : t('Reads everything in batches of 500 rows (by key when the table has one, so large tables stay fast), regardless of the server row limit.')}</p>
       </div>
       {!isView && <ImportCard conn={conn} table={table} info={info} onChanged={onChanged} />}
     </>
@@ -567,11 +568,11 @@ function ImportCard({ conn, table, info, onChanged }: TabProps) {
   const stop = useRef(false);
 
   const parsed = useMemo((): { docs: Record<string, unknown>[]; kind: string; error?: string } => {
-    const t = text.trim();
-    if (!t) return { docs: [], kind: '' };
+    const src = text.trim();
+    if (!src) return { docs: [], kind: '' };
     try {
-      if (t.startsWith('[') || t.startsWith('{')) return { docs: parseDocuments(t), kind: 'JSON' };
-      return { docs: csvToDocs(t, { emptyAsNull: emptyNull }), kind: t.split(/\r?\n/, 1)[0].includes('\t') ? 'TSV' : 'CSV' };
+      if (src.startsWith('[') || src.startsWith('{')) return { docs: parseDocuments(src), kind: 'JSON' };
+      return { docs: csvToDocs(src, { emptyAsNull: emptyNull }), kind: src.split(/\r?\n/, 1)[0].includes('\t') ? 'TSV' : 'CSV' };
     } catch (e) { return { docs: [], kind: '', error: (e as Error).message }; }
   }, [text, emptyNull]);
 
@@ -593,39 +594,39 @@ function ImportCard({ conn, table, info, onChanged }: TabProps) {
     const p = await bulkInsert(conn, table, docs, { mode, batch: 200, onProgress: (x) => setProg({ ...x, running: true }), shouldStop: () => stop.current });
     setProg({ ...p, running: false });
     onChanged();
-    toast(p.error ? `Stopped after ${p.done} rows: ${p.error}` : `${p.inserted.toLocaleString()} rows imported`, p.error ? 'err' : 'ok');
+    toast(p.error ? t('Stopped after {n} rows: {error}', { n: p.done.toLocaleString(), error: p.error }) : tp(p.inserted, '{n} row imported', '{n} rows imported'), p.error ? 'err' : 'ok');
   }
 
   return (
     <div className="card">
-      <b>Import</b>
-      <p className="muted small">Paste CSV/TSV (first line = column names), a JSON array or JSON Lines, or choose a file. Rows are sent as multi-row INSERTs in batches of 200; each batch is applied atomically.</p>
+      <b>{t('Import')}</b>
+      <p className="muted small">{t('Paste CSV/TSV (first line = column names), a JSON array or JSON Lines, or choose a file. Rows are sent as multi-row INSERTs in batches of 200; each batch is applied atomically.')}</p>
       <div className="row wrap" style={{ marginBottom: 8 }}>
-        <label className="btn sm">Choose file<input type="file" accept=".csv,.tsv,.txt,.json,.jsonl,.ndjson" style={{ display: 'none' }} onChange={pick} /></label>
+        <label className="btn sm">{t('Choose file')}<input type="file" accept=".csv,.tsv,.txt,.json,.jsonl,.ndjson" style={{ display: 'none' }} onChange={pick} /></label>
         <div className="seg">
-          {([['insert', 'INSERT'], ['ignore', 'Skip duplicates'], ['replace', 'Overwrite duplicates']] as [InsertMode, string][])
+          {([['insert', 'INSERT'], ['ignore', t('Skip duplicates')], ['replace', t('Overwrite duplicates')]] as [InsertMode, string][])
             .filter(([m]) => insertModes(dialectOf(conn)).includes(m))
             .map(([m, l]) => <button key={m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>{l}</button>)}
         </div>
-        <label className="check" style={{ margin: 0 }}><input type="checkbox" checked={emptyNull} onChange={(e) => setEmptyNull(e.target.checked)} /> Empty cells as NULL</label>
+        <label className="check" style={{ margin: 0 }}><input type="checkbox" checked={emptyNull} onChange={(e) => setEmptyNull(e.target.checked)} /> {t('Empty cells as NULL')}</label>
       </div>
       <textarea className="inp mono" style={{ width: '100%', minHeight: 120 }} value={text} spellCheck={false} onChange={(e) => setText(e.target.value)}
         placeholder={`${(info.columns ?? []).filter((c) => !(c.pk && affinity(c) === 'INTEGER')).map((c) => c.name).join(',')}\n...`} />
       {parsed.error && <p className="danger small">{parsed.error}</p>}
       {parsed.docs.length > 0 && (
         <>
-          <p className="small">{parsed.kind} · <b>{parsed.docs.length.toLocaleString()} rows</b> · {keys.length} columns — preview (first 5 rows)</p>
+          <p className="small">{parsed.kind} · <b>{tp(parsed.docs.length, '{n} row', '{n} rows')}</b> · {tp(keys.length, '{n} column', '{n} columns')} — {t('preview (first 5 rows)')}</p>
           <DataTable rows={parsed.docs.slice(0, 5)} />
           {unknown.length > 0 && (
             <label className="check" style={{ marginTop: 8 }}><input type="checkbox" checked={dropUnknown} onChange={(e) => setDropUnknown(e.target.checked)} />
-              <span className="warn small">Skip columns not in the table: {unknown.join(', ')}</span></label>
+              <span className="warn small">{t('Skip columns not in the table: {columns}', { columns: unknown.join(', ') })}</span></label>
           )}
         </>
       )}
       <div className="row" style={{ marginTop: 10 }}>
-        <button className="btn primary" disabled={!parsed.docs.length || prog?.running} onClick={run}>Import</button>
-        {prog?.running && <button className="btn" onClick={() => { stop.current = true; }}>Stop</button>}
-        {prog && <span className="small">{prog.done.toLocaleString()}/{prog.total.toLocaleString()} processed · {prog.inserted.toLocaleString()} inserted</span>}
+        <button className="btn primary" disabled={!parsed.docs.length || prog?.running} onClick={run}>{t('Import')}</button>
+        {prog?.running && <button className="btn" onClick={() => { stop.current = true; }}>{t('Stop')}</button>}
+        {prog && <span className="small">{t('{done}/{total} processed · {inserted} inserted', { done: prog.done.toLocaleString(), total: prog.total.toLocaleString(), inserted: prog.inserted.toLocaleString() })}</span>}
       </div>
       {prog && prog.total > 0 && <div className="progress"><div style={{ width: `${(prog.done / prog.total) * 100}%`, background: prog.error ? 'var(--warn)' : undefined }} /></div>}
       {prog?.error && <pre className="out">{prog.error}</pre>}
@@ -647,12 +648,12 @@ function DdlTab({ conn, table, info, base, onChanged }: TabProps & { base: strin
   return (
     <>
       <div className="row wrap" style={{ marginBottom: 8 }}>
-        <button className="btn sm" onClick={() => { navigator.clipboard?.writeText(info.sql ?? ''); toast('Copied', 'ok'); }}>Copy</button>
-        {isView && <button className="btn sm" onClick={() => setEditView(true)}>Edit view</button>}
+        <button className="btn sm" onClick={() => { navigator.clipboard?.writeText(info.sql ?? ''); toast(t('Copied'), 'ok'); }}>{t('Copy')}</button>
+        {isView && <button className="btn sm" onClick={() => setEditView(true)}>{t('Edit view')}</button>}
         {isView && <button className="btn sm danger" onClick={async () => {
-          if (!(await confirm(`Drop view "${table}"? (The underlying data is not affected.)`))) return;
+          if (!(await confirm(t('Drop view "{name}"? (The underlying data is not affected.)', { name: table }), t('Delete')))) return;
           const r = await dropView(conn, table);
-          if (r.ok) { toast('View dropped', 'ok'); nav(base, { replace: true }); } else toast(`Failed: ${errorText(r)}`, 'err');
+          if (r.ok) { toast(t('View dropped'), 'ok'); nav(base, { replace: true }); } else toast(t('Failed: {error}', { error: errorText(r) }), 'err');
         }}>DROP VIEW</button>}
       </div>
       <pre className="out">{info.sql}</pre>
@@ -661,11 +662,11 @@ function DdlTab({ conn, table, info, base, onChanged }: TabProps & { base: strin
           onPreview={async (s) => { const r = await goQuery(conn, s, undefined, { limit: 5 }); if (r.ok) setPreview(goRows(r.data)); else toast(errorText(r), 'err'); }}
           onCreate={async (sql) => {
             const r = await execStatements(conn, d.replaceView ? [sql] : [`DROP VIEW ${d.qt(table)}`, sql]);
-            if (!r.ok) { toast(`Failed: ${errorText(r)}`, 'err'); return false; }
-            toast('View saved', 'ok'); onChanged(); return true;
+            if (!r.ok) { toast(t('Failed: {error}', { error: errorText(r) }), 'err'); return false; }
+            toast(t('View saved'), 'ok'); onChanged(); return true;
           }} />
       )}
-      {preview && <Modal title="Preview (5 rows)" onClose={() => setPreview(null)} wide><DataTable rows={preview} /></Modal>}
+      {preview && <Modal title={t('Preview (5 rows)')} onClose={() => setPreview(null)} wide><DataTable rows={preview} /></Modal>}
       {confirmEl}
     </>
   );

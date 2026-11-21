@@ -24,6 +24,7 @@ const RedisPage = lazy(() => import('./pages/RedisPage'));
 const SqlServerPage = lazy(() => import('./pages/SqlServerPage'));
 import type { ServerKind } from './api/types';
 import { useConnection } from './store/store';
+import { t, useLang } from './i18n';
 
 type Pages = Partial<Record<ServerKind | 'sql', React.ReactNode>>;
 
@@ -33,7 +34,7 @@ type Pages = Partial<Record<ServerKind | 'sql', React.ReactNode>>;
  */
 function ByKind(p: Pages) {
   const conn = useConnection(useParams().connId);
-  if (!conn) return <div className="empty">Connection not found. <a href="#/connections">Server list</a></div>;
+  if (!conn) return <div className="empty">{t('Connection not found.')} <a href="#/connections">{t('Server list')}</a></div>;
   const sql = ['go', 'postgres', 'mysql', 'mssql', 'sqlite'].includes(conn.kind);
   return <>{p[conn.kind] ?? (sql ? p.sql : undefined) ?? p.rest}</>;
 }
@@ -50,6 +51,8 @@ function ServerPage() {
 // HashRouter keeps deep links working when the built files are served from a
 // plain static host, a file:// WebView (Capacitor) or the bundled proxy.
 export default function App() {
+  // a language switch re-renders the whole tree (state is kept; React.memo parts subscribe themselves)
+  useLang();
   return (
     <ToastProvider>
       <HashRouter>

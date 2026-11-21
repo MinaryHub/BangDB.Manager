@@ -1,15 +1,17 @@
 import { APP_VERSION, ISSUES_URL, PLATFORM_LABEL, platform, systemLine } from './appinfo';
+import { tx } from './i18n';
 import type { ServerKind } from './api/types';
 
 export type FeedbackKind = 'bug' | 'feature' | 'question';
 
 export const FEEDBACK: Record<FeedbackKind, { label: string; template: string; labels: string; prefix: string; placeholder: string }> = {
-  bug: { label: 'Report a bug', template: 'bug_report.yml', labels: 'bug', prefix: '[Bug] ', placeholder: 'What happened, and what did you expect instead? Steps to reproduce help a lot.' },
-  feature: { label: 'Request a feature', template: 'feature_request.yml', labels: 'enhancement', prefix: '[Feature] ', placeholder: 'What would you like the app to do, and what would it help you with?' },
-  question: { label: 'Ask a question', template: 'question.yml', labels: 'question', prefix: '[Question] ', placeholder: 'What would you like to know?' }
+  bug: { label: tx('Report a bug'), template: 'bug_report.yml', labels: 'bug', prefix: '[Bug] ', placeholder: tx('What happened, and what did you expect instead? Steps to reproduce help a lot.') },
+  feature: { label: tx('Request a feature'), template: 'feature_request.yml', labels: 'enhancement', prefix: '[Feature] ', placeholder: tx('What would you like the app to do, and what would it help you with?') },
+  question: { label: tx('Ask a question'), template: 'question.yml', labels: 'question', prefix: '[Question] ', placeholder: tx('What would you like to know?') }
 };
 
 /**
+ * Kept in English on purpose: the text goes into a public GitHub issue.
  * Details that help with a report, without anything identifying: no server
  * addresses, names, credentials, table names or data — only the app build,
  * where it runs, the kinds of servers saved and the kind of screen.

@@ -7,6 +7,7 @@ import { deleteRow, primaryKeyColumns, updateRow } from '../api/goapi';
 import { TopBar } from '../components/Layout';
 import { DataTable, Field, JsonOut, Modal, ResultBadge, describeResult, useConfirm, useToast } from '../components/ui';
 import { useConnection } from '../store/store';
+import { t, tp } from '../i18n';
 
 type Tab = 'browse' | 'put' | 'import' | 'key' | 'index' | 'info';
 
@@ -23,16 +24,16 @@ export default function TableDetailPage() {
     if (conn?.kind === 'go') tableInfo(conn, db, table).then((r) => setInfo(r.ok ? (r.data as GoTableInfo) : undefined));
   }, [conn, db, table]);
 
-  if (!conn) return <div className="empty">Connection not found.</div>;
+  if (!conn) return <div className="empty">{t('Connection not found.')}</div>;
   const pk = primaryKeyColumns(info);
   const n = count?.ok && count.data && typeof count.data === 'object' ? (count.data as { count?: number }).count : undefined;
 
   return (
     <>
-      <TopBar title={table} crumbs={[{ to: `/c/${conn.id}/dbs`, label: conn.name }, { to: `/c/${conn.id}/db/${encodeURIComponent(db)}`, label: db }, { label: 'Table' }]}
-        right={<span className="badge">{count ? (count.ok ? `${n ?? '?'} rows` : 'Count failed') : '…'}</span>} />
+      <TopBar title={table} crumbs={[{ to: `/c/${conn.id}/dbs`, label: conn.name }, { to: `/c/${conn.id}/db/${encodeURIComponent(db)}`, label: db }, { label: t('Table') }]}
+        right={<span className="badge">{count ? (count.ok ? (n === undefined ? t('? rows') : tp(n, '{n} row', '{n} rows')) : t('Count failed')) : '…'}</span>} />
       <div className="tabs">
-        {([['browse', 'Browse'], ['put', conn.kind === 'go' ? 'Insert row' : 'Insert document'], ['import', 'Import'], ['key', 'Lookup / delete by key'], ['index', 'Indexes'], ['info', 'Info']] as [Tab, string][]).map(([k, l]) => (
+        {([['browse', t('Browse')], ['put', conn.kind === 'go' ? t('Insert row') : t('Insert document')], ['import', t('Import')], ['key', t('Lookup / delete by key')], ['index', t('Indexes')], ['info', t('Info')]] as [Tab, string][]).map(([k, l]) => (
           <button key={k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -68,35 +69,35 @@ function Browse({ conn, db, table, onDone, pk }: P) {
   return (
     <>
       <div className="row wrap" style={{ marginBottom: 10 }}>
-        <input className="grow mono" placeholder="WHERE condition (optional), e.g. age > 30" value={where} onChange={(e) => setWhere(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && run()} style={inp} />
+        <input className="grow mono" placeholder={t('WHERE condition (optional), e.g. age > 30')} value={where} onChange={(e) => setWhere(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && run()} style={inp} />
         <input type="number" className="mono" value={limit} min={1} max={10000} onChange={(e) => setLimit(Number(e.target.value) || 50)} style={{ ...inp, width: 90 }} />
-        <button className="btn primary sm" onClick={run} disabled={busy}>{busy ? '…' : 'Load'}</button>
+        <button className="btn primary sm" onClick={run} disabled={busy}>{busy ? '…' : t('Load')}</button>
         <label className="check" style={{ margin: 0 }}><input type="checkbox" checked={raw} onChange={(e) => setRaw(e.target.checked)} /> JSON</label>
         <ResultBadge r={res} />
         {rows.length > 0 && (
           <>
-            <button className="btn sm ghost" onClick={() => downloadText(`${table}-${stamp()}.json`, JSON.stringify(rows, null, 2))}>Save JSON</button>
-            <button className="btn sm ghost" onClick={() => downloadText(`${table}-${stamp()}.csv`, '﻿' + toCsv(rows), 'text/csv')}>Save CSV</button>
+            <button className="btn sm ghost" onClick={() => downloadText(`${table}-${stamp()}.json`, JSON.stringify(rows, null, 2))}>{t('Save JSON')}</button>
+            <button className="btn sm ghost" onClick={() => downloadText(`${table}-${stamp()}.csv`, '﻿' + toCsv(rows), 'text/csv')}>{t('Save CSV')}</button>
           </>
         )}
       </div>
       {res && !res.ok && <div className="card danger">{describeResult(res)}</div>}
       {res?.ok && (raw ? <JsonOut value={res.data} /> : <DataTable rows={rows} onRowClick={(r) => setSel(r)} />)}
-      {res?.ok && !raw && rows.length > 0 && <p className="muted small">{conn.kind === 'go' && !pk.length ? 'This table has no primary key; edit or delete rows in the SQL console.' : 'Click a row to edit or delete it.'}</p>}
-      {res?.ok && (res.data as { truncated?: boolean })?.truncated && <p className="warn small">Results were truncated by the server row limit.</p>}
+      {res?.ok && !raw && rows.length > 0 && <p className="muted small">{conn.kind === 'go' && !pk.length ? t('This table has no primary key; edit or delete rows in the SQL console.') : t('Click a row to edit or delete it.')}</p>}
+      {res?.ok && (res.data as { truncated?: boolean })?.truncated && <p className="warn small">{t('Results were truncated by the server row limit.')}</p>}
       {sel && (
         <RowModal doc={sel} onClose={() => setSel(null)} keyLabel={conn.kind === 'go' ? (pk.length ? sel[pk[0]] : undefined) : undefined} canDelete={conn.kind === 'rest' || pk.length > 0}
           onSave={async (doc) => {
             try {
               const r = conn.kind === 'go' ? await updateRow(conn, table, doc, sel, pk) : await putDoc(conn, db, table, doc);
-              toast(r.ok ? 'Saved' : `Failed: ${describeResult(r)}`, r.ok ? 'ok' : 'err');
+              toast(r.ok ? t('Saved') : t('Failed: {error}', { error: describeResult(r) }), r.ok ? 'ok' : 'err');
               if (r.ok) { setSel(null); run(); onDone?.(); }
             } catch (e) { toast((e as Error).message, 'err'); }
           }}
           onDelete={async (key) => {
             try {
               const r = conn.kind === 'go' ? await deleteRow(conn, table, sel, pk) : await delDoc(conn, db, table, key);
-              toast(r.ok ? 'Deleted' : `Failed: ${describeResult(r)}`, r.ok ? 'ok' : 'err');
+              toast(r.ok ? t('Deleted') : t('Failed: {error}', { error: describeResult(r) }), r.ok ? 'ok' : 'err');
               if (r.ok) { setSel(null); run(); onDone?.(); }
             } catch (e) { toast((e as Error).message, 'err'); }
           }} />
@@ -112,22 +113,22 @@ function RowModal({ doc, onClose, onSave, onDelete, keyLabel, canDelete = true }
   const toast = useToast();
   const key = keyLabel !== undefined ? String(keyLabel) : docKey(doc);
   return (
-    <Modal title={key !== undefined ? `Row ${key}` : 'Row'} onClose={onClose}>
-      <Field label="JSON (saving updates the row by its primary key)"><textarea className="mono" value={text} rows={12} spellCheck={false} onChange={(e) => setText(e.target.value)} /></Field>
+    <Modal title={key !== undefined ? t('Row {key}', { key }) : t('Row')} onClose={onClose}>
+      <Field label={t('JSON (saving updates the row by its primary key)')}><textarea className="mono" value={text} rows={12} spellCheck={false} onChange={(e) => setText(e.target.value)} /></Field>
       <div className="actions">
         {key !== undefined && canDelete && (
           <button className="btn danger" disabled={busy} onClick={async () => {
-            if (!(await confirm(`Delete the document with key "${key}"?`))) return;
+            if (!(await confirm(t('Delete the document with key "{key}"?', { key })))) return;
             setBusy(true); try { await onDelete(key); } finally { setBusy(false); }
-          }}>Delete</button>
+          }}>{t('Delete')}</button>
         )}
         <span className="grow" />
-        <button className="btn" onClick={onClose}>Close</button>
+        <button className="btn" onClick={onClose}>{t('Close')}</button>
         <button className="btn primary" disabled={busy} onClick={async () => {
           let d: Record<string, unknown>;
-          try { d = parseDocuments(text)[0]; if (!d) throw new Error('Empty'); } catch (e) { toast(`JSON error: ${(e as Error).message}`, 'err'); return; }
+          try { d = parseDocuments(text)[0]; if (!d) throw new Error(t('Empty')); } catch (e) { toast(t('JSON error: {error}', { error: (e as Error).message }), 'err'); return; }
           setBusy(true); try { await onSave(d); } finally { setBusy(false); }
-        }}>Save</button>
+        }}>{t('Save')}</button>
       </div>
       {confirmEl}
     </Modal>
@@ -150,10 +151,10 @@ function ImportDocs({ conn, db, table, onDone }: P) {
 
   async function run() {
     let docs: Record<string, unknown>[];
-    try { docs = parseDocuments(text); } catch (e) { toast(`Parse error: ${(e as Error).message}`, 'err'); return; }
-    if (!docs.length) { toast('No documents to import', 'err'); return; }
+    try { docs = parseDocuments(text); } catch (e) { toast(t('Parse error: {error}', { error: (e as Error).message }), 'err'); return; }
+    if (!docs.length) { toast(t('No documents to import'), 'err'); return; }
     const missing = needsPk ? docs.findIndex((d) => docKey(d) === undefined) : -1;
-    if (missing >= 0) { toast(`Document ${missing + 1} has no _pk`, 'err'); return; }
+    if (missing >= 0) { toast(t('Document {n} has no _pk', { n: missing + 1 }), 'err'); return; }
     stopRef.stop = false;
     const st = { done: 0, total: docs.length, failed: 0, running: true, errors: [] as string[] };
     setProg({ ...st });
@@ -171,21 +172,21 @@ function ImportDocs({ conn, db, table, onDone }: P) {
     st.running = false;
     setProg({ ...st });
     onDone?.();
-    toast(st.failed ? `Done: ${st.done - st.failed} succeeded, ${st.failed} failed` : `${st.done} imported`, st.failed ? 'err' : 'ok');
+    toast(st.failed ? t('Done: {ok} succeeded, {failed} failed', { ok: st.done - st.failed, failed: st.failed }) : t('{n} imported', { n: st.done }), st.failed ? 'err' : 'ok');
   }
 
   return (
     <>
-      <p className="muted small">Paste a JSON array, one object per line (JSON Lines), or a single object, or choose a file. {needsPk ? <>Each document must have a <code>_pk</code>; documents are sent one at a time via POST doc.</> : 'Object keys become column names; rows are inserted one at a time.'}</p>
+      <p className="muted small">{t('Paste a JSON array, one object per line (JSON Lines), or a single object, or choose a file.')} {needsPk ? t('Each document must have a _pk; documents are sent one at a time via POST doc.') : t('Object keys become column names; rows are inserted one at a time.')}</p>
       <div className="row wrap" style={{ marginBottom: 8 }}>
-        <label className="btn sm">Choose file<input type="file" accept=".json,.jsonl,.ndjson,.txt,application/json" style={{ display: 'none' }} onChange={pick} /></label>
-        <label className="check" style={{ margin: 0 }}><input type="checkbox" checked={stopOnError} onChange={(e) => setStopOnError(e.target.checked)} /> Stop on error</label>
+        <label className="btn sm">{t('Choose file')}<input type="file" accept=".json,.jsonl,.ndjson,.txt,application/json" style={{ display: 'none' }} onChange={pick} /></label>
+        <label className="check" style={{ margin: 0 }}><input type="checkbox" checked={stopOnError} onChange={(e) => setStopOnError(e.target.checked)} /> {t('Stop on error')}</label>
       </div>
-      <Field label="Documents"><textarea className="mono" value={text} rows={10} spellCheck={false} onChange={(e) => setText(e.target.value)} placeholder={'[{"_pk":"u1","name":"a"},{"_pk":"u2","name":"b"}]'} /></Field>
+      <Field label={t('Documents')}><textarea className="mono" value={text} rows={10} spellCheck={false} onChange={(e) => setText(e.target.value)} placeholder={'[{"_pk":"u1","name":"a"},{"_pk":"u2","name":"b"}]'} /></Field>
       <div className="row">
-        <button className="btn primary" disabled={prog?.running || !text.trim()} onClick={run}>Import</button>
-        {prog?.running && <button className="btn" onClick={() => { stopRef.stop = true; }}>Stop</button>}
-        {prog && <span className="small">{prog.done}/{prog.total} processed, {prog.failed} failed</span>}
+        <button className="btn primary" disabled={prog?.running || !text.trim()} onClick={run}>{t('Import')}</button>
+        {prog?.running && <button className="btn" onClick={() => { stopRef.stop = true; }}>{t('Stop')}</button>}
+        {prog && <span className="small">{t('{done}/{total} processed, {failed} failed', { done: prog.done, total: prog.total, failed: prog.failed })}</span>}
       </div>
       {prog && prog.total > 0 && (
         <div style={{ height: 6, background: 'var(--bg3)', borderRadius: 3, margin: '10px 0', overflow: 'hidden' }}>
@@ -210,19 +211,19 @@ function PutDoc({ conn, db, table, onDone, info }: P) {
   const toast = useToast();
   async function submit() {
     let body: unknown;
-    try { body = JSON.parse(text); } catch (e) { toast(`JSON error: ${(e as Error).message}`, 'err'); return; }
+    try { body = JSON.parse(text); } catch (e) { toast(t('JSON error: {error}', { error: (e as Error).message }), 'err'); return; }
     const r = await putDoc(conn, db, table, body);
     setRes(r);
-    toast(r.ok ? 'Saved' : `Failed: ${describeResult(r)}`, r.ok ? 'ok' : 'err');
+    toast(r.ok ? t('Saved') : t('Failed: {error}', { error: describeResult(r) }), r.ok ? 'ok' : 'err');
     if (r.ok) onDone?.();
   }
   return (
     <>
       {conn.kind === 'go'
-        ? <p className="muted small">JSON object keys become column names (INSERT). Leave auto-increment primary keys out. Nested objects/arrays are stored as JSON strings.</p>
-        : <p className="muted small">"_pk" is the primary key. Use a string for NORMAL_KEY tables and an integer for NORMAL_KEY_LONG tables.</p>}
-      <Field label="Document (JSON)"><textarea className="mono" value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} /></Field>
-      <div className="row"><button className="btn primary" onClick={submit}>{conn.kind === 'go' ? 'Save (INSERT)' : 'Save (POST doc)'}</button><ResultBadge r={res} /></div>
+        ? <p className="muted small">{t('JSON object keys become column names (INSERT). Leave auto-increment primary keys out. Nested objects/arrays are stored as JSON strings.')}</p>
+        : <p className="muted small">{t('"_pk" is the primary key. Use a string for NORMAL_KEY tables and an integer for NORMAL_KEY_LONG tables.')}</p>}
+      <Field label={t('Document (JSON)')}><textarea className="mono" value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} /></Field>
+      <div className="row"><button className="btn primary" onClick={submit}>{conn.kind === 'go' ? t('Save (INSERT)') : t('Save (POST doc)')}</button><ResultBadge r={res} /></div>
       {res && <JsonOut value={res.data ?? res.error} />}
     </>
   );
@@ -235,21 +236,21 @@ function KeyOps({ conn, db, table, onDone, pk }: P) {
   const toast = useToast();
   return (
     <>
-      <Field label={conn.kind === 'go' ? `Primary key (${pk[0] ?? 'none'})` : 'Primary key (_pk)'}><input className="mono" value={key} onChange={(e) => setKey(e.target.value)} /></Field>
+      <Field label={conn.kind === 'go' ? t('Primary key ({col})', { col: pk[0] ?? t('none') }) : t('Primary key (_pk)')}><input className="mono" value={key} onChange={(e) => setKey(e.target.value)} /></Field>
       <div className="row wrap">
-        <button className="btn" disabled={!key || (conn.kind === 'go' && !pk.length)} onClick={async () => { try { setRes(await getDoc(conn, db, table, key, pk)); } catch (e) { toast((e as Error).message, 'err'); } }}>Lookup (GET)</button>
+        <button className="btn" disabled={!key || (conn.kind === 'go' && !pk.length)} onClick={async () => { try { setRes(await getDoc(conn, db, table, key, pk)); } catch (e) { toast((e as Error).message, 'err'); } }}>{t('Lookup (GET)')}</button>
         <button className="btn danger" disabled={!key || (conn.kind === 'go' && !pk.length)} onClick={async () => {
-          if (!(await confirm(`Delete the row with key "${key}"?`))) return;
+          if (!(await confirm(t('Delete the row with key "{key}"?', { key })))) return;
           try {
             const r = await delDoc(conn, db, table, key, pk); setRes(r);
-            toast(r.ok ? 'Deleted' : `Failed: ${describeResult(r)}`, r.ok ? 'ok' : 'err'); if (r.ok) onDone?.();
+            toast(r.ok ? t('Deleted') : t('Failed: {error}', { error: describeResult(r) }), r.ok ? 'ok' : 'err'); if (r.ok) onDone?.();
           } catch (e) { toast((e as Error).message, 'err'); }
-        }}>Delete (DELETE)</button>
+        }}>{t('Delete (DELETE)')}</button>
         <ResultBadge r={res} />
       </div>
       {conn.kind === 'go'
-        ? <p className="muted small">{pk.length ? `Runs as SELECT/DELETE … WHERE ${pk[0]} = ?.` : 'This table has no primary key. Use the SQL console.'}</p>
-        : <p className="muted small">The key-based GET/DELETE paths are assumptions not confirmed by the documentation. If you get a 404, adjust the getDoc/delDoc paths under Edit server → Advanced. You can also look up a row with SQL (where _pk = '...') on the "Browse" tab.</p>}
+        ? <p className="muted small">{pk.length ? t('Runs as SELECT/DELETE … WHERE {col} = ?.', { col: pk[0] }) : t('This table has no primary key. Use the SQL console.')}</p>
+        : <p className="muted small">{t('The key-based GET/DELETE paths are assumptions not confirmed by the documentation. If you get a 404, adjust the getDoc/delDoc paths under Edit server → Advanced. You can also look up a row with SQL (where _pk = \'...\') on the "Browse" tab.')}</p>}
       {res && (conn.kind === 'go' && res.ok && extractRows(res.data).length ? <DataTable rows={extractRows(res.data)} /> : <JsonOut value={res.data ?? res.error} />)}
       {confirmEl}
     </>
@@ -267,22 +268,22 @@ function IndexOps({ conn, db, table, info, onDone }: P) {
     return (
       <>
         <div className="card">
-          <b>Indexes ({idx.length})</b>
+          <b>{t('Indexes ({n})', { n: idx.length })}</b>
           <div className="list" style={{ marginTop: 8 }}>
             {idx.map((i) => (
               <div key={i.name} className="item">
-                <div className="grow"><div className="title mono">{i.name}{i.unique && <span className="badge" style={{ marginLeft: 6 }}>UNIQUE</span>}{i.auto && <span className="badge" style={{ marginLeft: 6 }}>auto</span>}</div><div className="sub mono">{(i.columns ?? [i.column]).join(', ')}</div></div>
-                {!i.auto && <button className="btn sm danger" onClick={async () => { const r = await dropIndex(conn, db, table, i.name); setRes(r); toast(r.ok ? 'Deleted' : `Failed: ${describeResult(r)}`, r.ok ? 'ok' : 'err'); if (r.ok) onDone?.(); }}>Delete</button>}
+                <div className="grow"><div className="title mono">{i.name}{i.unique && <span className="badge" style={{ marginLeft: 6 }}>UNIQUE</span>}{i.auto && <span className="badge" style={{ marginLeft: 6 }}>{t('auto')}</span>}</div><div className="sub mono">{(i.columns ?? [i.column]).join(', ')}</div></div>
+                {!i.auto && <button className="btn sm danger" onClick={async () => { const r = await dropIndex(conn, db, table, i.name); setRes(r); toast(r.ok ? t('Deleted') : t('Failed: {error}', { error: describeResult(r) }), r.ok ? 'ok' : 'err'); if (r.ok) onDone?.(); }}>{t('Delete')}</button>}
               </div>
             ))}
-            {!idx.length && <div className="muted small">No indexes</div>}
+            {!idx.length && <div className="muted small">{t('No indexes')}</div>}
           </div>
         </div>
         <div className="card">
-          <b>Add index</b>
-          <Field label="Columns (comma-separated for multiple)"><input className="mono" value={s.idx_name} placeholder="age or city, age" onChange={(e) => up({ idx_name: e.target.value })} /></Field>
+          <b>{t('Add index')}</b>
+          <Field label={t('Columns (comma-separated for multiple)')}><input className="mono" value={s.idx_name} placeholder={t('age or city, age')} onChange={(e) => up({ idx_name: e.target.value })} /></Field>
           <label className="check"><input type="checkbox" checked={s.allow_duplicate === false} onChange={(e) => up({ allow_duplicate: !e.target.checked })} /> UNIQUE</label>
-          <button className="btn primary" disabled={!s.idx_name.trim()} onClick={async () => { const r = await addIndex(conn, db, table, s); setRes(r); toast(r.ok ? 'Index added' : `Failed: ${describeResult(r)}`, r.ok ? 'ok' : 'err'); if (r.ok) { up({ idx_name: '' }); onDone?.(); } }}>CREATE INDEX</button>
+          <button className="btn primary" disabled={!s.idx_name.trim()} onClick={async () => { const r = await addIndex(conn, db, table, s); setRes(r); toast(r.ok ? t('Index added') : t('Failed: {error}', { error: describeResult(r) }), r.ok ? 'ok' : 'err'); if (r.ok) { up({ idx_name: '' }); onDone?.(); } }}>CREATE INDEX</button>
         </div>
         <ResultBadge r={res} />
         {res && !res.ok && <JsonOut value={res.data ?? res.error} />}
@@ -292,20 +293,20 @@ function IndexOps({ conn, db, table, info, onDone }: P) {
   return (
     <>
       <div className="card">
-        <b>Add index</b>
+        <b>{t('Add index')}</b>
         <div className="grid2" style={{ marginTop: 8 }}>
-          <Field label="Field / index name (e.g. name or addr.city)"><input className="mono" value={s.idx_name} onChange={(e) => up({ idx_name: e.target.value })} /></Field>
-          <Field label="Type"><select value={s.idx_type} onChange={(e) => up({ idx_type: e.target.value as IndexSpec['idx_type'] })}><option>SIMPLE</option><option>NESTED</option><option>COMPOSITE</option><option>GEO</option></select></Field>
-          <Field label="Key type"><select value={s.key_type} onChange={(e) => up({ key_type: e.target.value as IndexSpec['key_type'] })}><option value="NORMAL_KEY">NORMAL_KEY (string)</option><option value="NORMAL_KEY_LONG">NORMAL_KEY_LONG (integer)</option></select></Field>
+          <Field label={t('Field / index name (e.g. name or addr.city)')}><input className="mono" value={s.idx_name} onChange={(e) => up({ idx_name: e.target.value })} /></Field>
+          <Field label={t('Type')}><select value={s.idx_type} onChange={(e) => up({ idx_type: e.target.value as IndexSpec['idx_type'] })}><option>SIMPLE</option><option>NESTED</option><option>COMPOSITE</option><option>GEO</option></select></Field>
+          <Field label={t('Key type')}><select value={s.key_type} onChange={(e) => up({ key_type: e.target.value as IndexSpec['key_type'] })}><option value="NORMAL_KEY">{t('NORMAL_KEY (string)')}</option><option value="NORMAL_KEY_LONG">{t('NORMAL_KEY_LONG (integer)')}</option></select></Field>
         </div>
-        <label className="check"><input type="checkbox" checked={s.allow_duplicate} onChange={(e) => up({ allow_duplicate: e.target.checked })} /> Allow duplicates</label>
-        <button className="btn primary" disabled={!s.idx_name.trim()} onClick={async () => { const r = await addIndex(conn, db, table, { ...s, idx_name: s.idx_name.trim() }); setRes(r); toast(r.ok ? 'Index added' : `Failed: ${describeResult(r)}`, r.ok ? 'ok' : 'err'); }}>Add (POST index)</button>
+        <label className="check"><input type="checkbox" checked={s.allow_duplicate} onChange={(e) => up({ allow_duplicate: e.target.checked })} /> {t('Allow duplicates')}</label>
+        <button className="btn primary" disabled={!s.idx_name.trim()} onClick={async () => { const r = await addIndex(conn, db, table, { ...s, idx_name: s.idx_name.trim() }); setRes(r); toast(r.ok ? t('Index added') : t('Failed: {error}', { error: describeResult(r) }), r.ok ? 'ok' : 'err'); }}>{t('Add (POST index)')}</button>
       </div>
       <div className="card">
-        <b>Delete index</b>
+        <b>{t('Delete index')}</b>
         <div className="row" style={{ marginTop: 8 }}>
-          <input className="grow mono" placeholder="Index name" value={dropName} onChange={(e) => setDropName(e.target.value)} style={inp} />
-          <button className="btn danger sm" disabled={!dropName.trim()} onClick={async () => { const r = await dropIndex(conn, db, table, dropName.trim()); setRes(r); toast(r.ok ? 'Deleted' : `Failed: ${describeResult(r)}`, r.ok ? 'ok' : 'err'); }}>Delete</button>
+          <input className="grow mono" placeholder={t('Index name')} value={dropName} onChange={(e) => setDropName(e.target.value)} style={inp} />
+          <button className="btn danger sm" disabled={!dropName.trim()} onClick={async () => { const r = await dropIndex(conn, db, table, dropName.trim()); setRes(r); toast(r.ok ? t('Deleted') : t('Failed: {error}', { error: describeResult(r) }), r.ok ? 'ok' : 'err'); }}>{t('Delete')}</button>
         </div>
       </div>
       <ResultBadge r={res} />
@@ -318,19 +319,19 @@ function Info({ conn, db, table, info, pk }: P) {
   const [res, setRes] = useState<ApiResult | null>(null);
   useEffect(() => { if (conn.kind === 'rest') tableInfo(conn, db, table).then(setRes); }, [conn, db, table]);
   if (conn.kind === 'go') {
-    if (!info) return <div className="empty">Could not load table info.</div>;
+    if (!info) return <div className="empty">{t('Could not load table info.')}</div>;
     return (
       <>
-        <div className="row wrap" style={{ marginBottom: 8 }}><span className="badge">{info.kind === 'view' ? 'View' : 'Table'}</span>{pk.length > 0 && <span className="badge">PK: {pk.join(', ')}</span>}</div>
-        {info.columns && <DataTable rows={info.columns.map((c) => ({ Column: c.name, Type: c.decl ?? c.type ?? '', 'NOT NULL': c.notNull ? '✔' : '', PK: c.pk ? '✔' : '', UNIQUE: c.unique ? '✔' : '', DEFAULT: c.default ?? '' }))} />}
-        <div className="muted small" style={{ margin: '12px 0 4px' }}>Definition</div>
+        <div className="row wrap" style={{ marginBottom: 8 }}><span className="badge">{info.kind === 'view' ? t('View') : t('Table')}</span>{pk.length > 0 && <span className="badge">PK: {pk.join(', ')}</span>}</div>
+        {info.columns && <DataTable rows={info.columns.map((c) => ({ [t('Column')]: c.name, [t('Type')]: c.decl ?? c.type ?? '', 'NOT NULL': c.notNull ? '✔' : '', PK: c.pk ? '✔' : '', UNIQUE: c.unique ? '✔' : '', DEFAULT: c.default ?? '' }))} />}
+        <div className="muted small" style={{ margin: '12px 0 4px' }}>{t('Definition')}</div>
         <pre className="out">{info.sql}</pre>
       </>
     );
   }
   return (
     <>
-      <div className="row"><ResultBadge r={res} /><span className="muted small">GET tableInfo (assumed path; may be unsupported by the server)</span></div>
+      <div className="row"><ResultBadge r={res} /><span className="muted small">{t('GET tableInfo (assumed path; may be unsupported by the server)')}</span></div>
       {res && <JsonOut value={res.data ?? res.error} />}
     </>
   );

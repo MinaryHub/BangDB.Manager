@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { ApiResult } from '../api/types';
+import { t, tp } from '../i18n';
 import { Icons } from './kinds';
 
 // ---------- Toasts ----------
@@ -23,8 +24,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastCtx.Provider value={push}>
       {children}
       <div className="toasts">
-        {items.map((t) => (
-          <div key={t.id} className={`toast ${t.kind}`} role="status">{t.kind === 'ok' ? Icons.check : t.kind === 'err' ? Icons.alert : Icons.info}<span className="grow">{t.text}</span>{t.n > 1 && <span className="n">×{t.n}</span>}</div>
+        {items.map((it) => (
+          <div key={it.id} className={`toast ${it.kind}`} role="status">{it.kind === 'ok' ? Icons.check : it.kind === 'err' ? Icons.alert : Icons.info}<span className="grow">{it.text}</span>{it.n > 1 && <span className="n">×{it.n}</span>}</div>
         ))}
       </div>
     </ToastCtx.Provider>
@@ -41,7 +42,7 @@ export function describeResult(r: ApiResult): string {
       : r.text.slice(0, 160);
     return `HTTP ${r.status} ${msg}`.trim();
   }
-  return `OK (${r.status}, ${r.durationMs}ms)`;
+  return t('OK ({status}, {ms}ms)', { status: r.status, ms: r.durationMs });
 }
 
 // ---------- Modal ----------
@@ -54,7 +55,7 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className={`modal${wide ? ' wide' : ''}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
-        <button className="x" onClick={onClose} aria-label="Close">{Icons.close}</button>
+        <button className="x" onClick={onClose} aria-label={t('Close')}>{Icons.close}</button>
         <h2>{title}</h2>
         {children}
       </div>
@@ -65,12 +66,12 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
 // ---------- Confirm ----------
 export function useConfirm() {
   const [req, setReq] = useState<{ text: string; ok: string; resolve: (v: boolean) => void } | null>(null);
-  const confirm = useCallback((text: string, ok = 'Delete') => new Promise<boolean>((resolve) => setReq({ text, ok, resolve })), []);
+  const confirm = useCallback((text: string, ok = t('Delete')) => new Promise<boolean>((resolve) => setReq({ text, ok, resolve })), []);
   const el = req ? (
-    <Modal title="Confirm" onClose={() => { req.resolve(false); setReq(null); }}>
+    <Modal title={t('Confirm')} onClose={() => { req.resolve(false); setReq(null); }}>
       <p>{req.text}</p>
       <div className="actions">
-        <button className="btn" onClick={() => { req.resolve(false); setReq(null); }}>Cancel</button>
+        <button className="btn" onClick={() => { req.resolve(false); setReq(null); }}>{t('Cancel')}</button>
         <button className="btn danger" autoFocus onClick={() => { req.resolve(true); setReq(null); }}>{req.ok}</button>
       </div>
     </Modal>
@@ -90,8 +91,8 @@ export function usePrompt() {
           onKeyDown={(e) => { if (e.key === 'Enter' && req.value.trim()) close(req.value.trim()); }} />
       </Field>
       <div className="actions">
-        <button className="btn" onClick={() => close(null)}>Cancel</button>
-        <button className="btn primary" disabled={!req.value.trim()} onClick={() => close(req.value.trim())}>OK</button>
+        <button className="btn" onClick={() => close(null)}>{t('Cancel')}</button>
+        <button className="btn primary" disabled={!req.value.trim()} onClick={() => close(req.value.trim())}>{t('OK')}</button>
       </div>
     </Modal>
   ) : null;
@@ -107,7 +108,7 @@ export function JsonOut({ value }: { value: unknown }) {
 export function ResultBadge({ r }: { r: ApiResult | null }) {
   if (!r) return null;
   const cls = r.error ? 'err' : r.ok ? 'ok' : 'warn';
-  return <span className={`badge ${cls}`}>{r.error ? 'Error' : `HTTP ${r.status}`} · {r.durationMs}ms</span>;
+  return <span className={`badge ${cls}`}>{r.error ? t('Error') : `HTTP ${r.status}`} · {r.durationMs}ms</span>;
 }
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -156,7 +157,7 @@ export function DataTable({ rows, onRowClick }: { rows: Record<string, unknown>[
     const dir = sort.desc ? -1 : 1;
     return idx.sort((i, j) => compareValues(rows[i][sort.col], rows[j][sort.col]) * dir || i - j);
   }, [rows, sort]);
-  if (!rows.length) return <div className="empty">No results</div>;
+  if (!rows.length) return <div className="empty">{t('No results')}</div>;
   const toggle = (c: string) => setSort((s) => (s?.col !== c ? { col: c, desc: false } : !s.desc ? { col: c, desc: true } : null));
   return (
     <div className="tablewrap">
@@ -164,7 +165,7 @@ export function DataTable({ rows, onRowClick }: { rows: Record<string, unknown>[
         <thead>
           <tr>
             {cols.map((c) => (
-              <th key={c} className="sortable" onClick={() => toggle(c)} title="Sort (click again to reverse, a third time to reset)"
+              <th key={c} className="sortable" onClick={() => toggle(c)} title={t('Sort (click again to reverse, a third time to reset)')}
                 aria-sort={sort?.col === c ? (sort.desc ? 'descending' : 'ascending') : undefined}>
                 {c}{sort?.col === c && (sort.desc ? ' ▼' : ' ▲')}
               </th>
@@ -187,9 +188,9 @@ export function DataTable({ rows, onRowClick }: { rows: Record<string, unknown>[
       </table>
       {rows.length > limit && (
         <div className="more-rows">
-          Showing {limit.toLocaleString()} of {rows.length.toLocaleString()} rows
-          <button className="btn sm" onClick={() => setLimit((l) => l + RENDER_STEP * 3)}>Show more</button>
-          <button className="btn sm ghost" onClick={() => setLimit(rows.length)}>Show all</button>
+          {tp(rows.length, 'Showing {shown} of {n} row', 'Showing {shown} of {n} rows', { shown: limit.toLocaleString() })}
+          <button className="btn sm" onClick={() => setLimit((l) => l + RENDER_STEP * 3)}>{t('Show more')}</button>
+          <button className="btn sm ghost" onClick={() => setLimit(rows.length)}>{t('Show all')}</button>
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { affinity, editText, isBlob, isBoolColumn, isJsonColumn, parseInput } from '../api/goapi';
 import type { ColumnInfo } from '../api/types';
+import { t, tp } from '../i18n';
 import { Modal, useConfirm, useToast } from './ui';
 
 type Mode = 'default' | 'null' | 'value';
@@ -49,7 +50,7 @@ export function RowForm({ columns, values, isNew, readOnly, title, onClose, onSu
       if (s.mode === 'null') v = null;
       else if (s.blob !== undefined) v = { blob: s.blob };
       else if (isJsonColumn(c) && s.text.trim()) {
-        try { v = JSON.stringify(JSON.parse(s.text)); } catch (e) { toast(`${c.name}: invalid JSON — ${(e as Error).message}`, 'err'); return null; }
+        try { v = JSON.stringify(JSON.parse(s.text)); } catch (e) { toast(t('{column}: invalid JSON — {error}', { column: c.name, error: (e as Error).message }), 'err'); return null; }
       } else {
         try { v = parseInput(s.text, c); } catch (e) { toast((e as Error).message, 'err'); return null; }
       }
@@ -62,7 +63,7 @@ export function RowForm({ columns, values, isNew, readOnly, title, onClose, onSu
   async function submit() {
     const v = collect();
     if (!v || !onSubmit) return;
-    if (!Object.keys(v).length) { toast(isNew ? 'Enter at least one value' : 'No values changed', 'err'); return; }
+    if (!Object.keys(v).length) { toast(isNew ? t('Enter at least one value') : t('No values changed'), 'err'); return; }
     setBusy(true);
     try { if (await onSubmit(v)) onClose(); } finally { setBusy(false); }
   }
@@ -93,16 +94,16 @@ export function RowForm({ columns, values, isNew, readOnly, title, onClose, onSu
             <div className="ctl">
               {a === 'BLOB' || s.blob !== undefined ? (
                 <div className="row wrap">
-                  <span className="small muted">{s.blob !== undefined ? `${Math.floor((s.blob.length * 3) / 4)} bytes` : s.mode === 'null' ? 'NULL' : 'Empty'}</span>
-                  {!readOnly && <label className="btn sm">Choose file<input type="file" style={{ display: 'none' }} onChange={(e) => pickFile(c.name, e)} /></label>}
-                  {s.blob !== undefined && <button className="btn sm ghost" onClick={() => download(c.name, s.blob!)}>Download</button>}
+                  <span className="small muted">{s.blob !== undefined ? tp(Math.floor((s.blob.length * 3) / 4), '{n} byte', '{n} bytes') : s.mode === 'null' ? 'NULL' : t('Empty')}</span>
+                  {!readOnly && <label className="btn sm">{t('Choose file')}<input type="file" style={{ display: 'none' }} onChange={(e) => pickFile(c.name, e)} /></label>}
+                  {s.blob !== undefined && <button className="btn sm ghost" onClick={() => download(c.name, s.blob!)}>{t('Download')}</button>}
                 </div>
               ) : isBoolColumn(c) ? (
                 <select className="inp" disabled={readOnly} value={s.mode === 'value' ? (Number(s.text) ? '1' : '0') : s.mode}
                   onChange={(e) => { const v = e.target.value; set(c.name, v === 'null' || v === 'default' ? { mode: v } : { mode: 'value', text: v }); }}>
-                  {isNew && <option value="default">Default</option>}
+                  {isNew && <option value="default">{t('Default')}</option>}
                   {!c.notNull && !c.pk && <option value="null">NULL</option>}
-                  <option value="1">true (1)</option><option value="0">false (0)</option>
+                  <option value="1">{t('true (1)')}</option><option value="0">{t('false (0)')}</option>
                 </select>
               ) : long ? (
                 <textarea className="inp mono" rows={isJsonColumn(c) ? 6 : 3} readOnly={readOnly} value={s.text}
@@ -116,9 +117,9 @@ export function RowForm({ columns, values, isNew, readOnly, title, onClose, onSu
               )}
               {!readOnly && (
                 <div className="opts">
-                  {isNew && <label><input type="checkbox" checked={s.mode === 'default'} onChange={(e) => set(c.name, { mode: e.target.checked ? 'default' : 'value' })} />{auto ? 'Auto number' : 'Default'}</label>}
+                  {isNew && <label><input type="checkbox" checked={s.mode === 'default'} onChange={(e) => set(c.name, { mode: e.target.checked ? 'default' : 'value' })} />{auto ? t('Auto number') : t('Default')}</label>}
                   {!c.notNull && !c.pk && <label><input type="checkbox" checked={s.mode === 'null'} onChange={(e) => set(c.name, { mode: e.target.checked ? 'null' : 'value', blob: undefined })} />NULL</label>}
-                  {isJsonColumn(c) && s.mode === 'value' && <a href="#" onClick={(e) => { e.preventDefault(); try { set(c.name, { text: JSON.stringify(JSON.parse(s.text), null, 2) }); } catch (er) { toast(`JSON error: ${(er as Error).message}`, 'err'); } }}>Format</a>}
+                  {isJsonColumn(c) && s.mode === 'value' && <a href="#" onClick={(e) => { e.preventDefault(); try { set(c.name, { text: JSON.stringify(JSON.parse(s.text), null, 2) }); } catch (er) { toast(t('JSON error: {error}', { error: (er as Error).message }), 'err'); } }}>{t('Format')}</a>}
                 </div>
               )}
             </div>
@@ -128,24 +129,24 @@ export function RowForm({ columns, values, isNew, readOnly, title, onClose, onSu
       <div className="actions">
         {onDelete && (
           <button className="btn danger" disabled={busy} onClick={async () => {
-            if (!(await confirm('Delete this row?'))) return;
+            if (!(await confirm(t('Delete this row?'), t('Delete')))) return;
             setBusy(true); try { if (await onDelete()) onClose(); } finally { setBusy(false); }
-          }}>Delete</button>
+          }}>{t('Delete')}</button>
         )}
-        {onDuplicate && <button className="btn ghost" onClick={() => { const v = collectAll(columns, f); if (v) onDuplicate(v); }}>Duplicate</button>}
+        {onDuplicate && <button className="btn ghost" onClick={() => { const v = collectAll(columns, f); if (v) onDuplicate(v); }}>{t('Duplicate')}</button>}
         <span className="grow" />
-        <button className="btn" onClick={onClose}>{readOnly ? 'Close' : 'Cancel'}</button>
-        {!readOnly && onSubmit && <button className="btn primary" disabled={busy} onClick={submit}>{isNew ? 'Add (INSERT)' : 'Save (UPDATE)'}</button>}
+        <button className="btn" onClick={onClose}>{readOnly ? t('Close') : t('Cancel')}</button>
+        {!readOnly && onSubmit && <button className="btn primary" disabled={busy} onClick={submit}>{isNew ? t('Add (INSERT)') : t('Save (UPDATE)')}</button>}
       </div>
       {confirmEl}
     </Modal>
   );
 }
 
-const placeholder = (c: ColumnInfo, auto?: boolean) => (auto ? '(auto number)' : c.default ? `(default ${c.default})` : '(default: NULL)');
-const pretty = (c: ColumnInfo, t: string) => {
-  if (!isJsonColumn(c) || !t) return t;
-  try { return JSON.stringify(JSON.parse(t), null, 2); } catch { return t; }
+const placeholder = (c: ColumnInfo, auto?: boolean) => (auto ? t('(auto number)') : c.default ? t('(default {value})', { value: c.default }) : t('(default: NULL)'));
+const pretty = (c: ColumnInfo, s: string) => {
+  if (!isJsonColumn(c) || !s) return s;
+  try { return JSON.stringify(JSON.parse(s), null, 2); } catch { return s; }
 };
 const same = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
 

@@ -5,15 +5,21 @@ import { cachedTables } from '../api/goapi';
 import type { GoTableInfo } from '../api/types';
 import { useConnections, useDbConnection } from '../store/store';
 import { SPONSOR_URL, openExternal } from '../appinfo';
+import { getLang, setLang, t, tp, tx, useLang } from '../i18n';
 import { nextTheme, setTheme, useTheme } from '../theme';
 import { checkForUpdates } from '../update';
 import { Icons, KindBadge, KIND_STYLE } from './kinds';
+
+const THEME_NAME = { auto: tx('system'), light: tx('light'), dark: tx('dark') } as const;
 
 /** Event that opens the palette from anywhere (buttons outside the layout). */
 export const OPEN_PALETTE = 'bangdb:palette';
 export const openPalette = () => window.dispatchEvent(new Event(OPEN_PALETTE));
 
-interface Item { id: string; label: string; hint?: string; group: string; icon?: ReactNode; run: () => void }
+interface Item { id: string; label: string; /** English label, so English words still find translated items */ alt?: string; hint?: string; group: string; icon?: ReactNode; run: () => void }
+
+/** Translated label plus its English source for searching. */
+const L = (en: string, vars?: Record<string, unknown>) => ({ label: t(en, vars), alt: en });
 
 /**
  * Score of `query` as a subsequence of `text` (higher is better), or -1.
@@ -58,6 +64,7 @@ function Palette({ onClose }: { onClose: () => void }) {
   const db = routeDb ?? active?.defaultDb;
   const conn = useDbConnection(active?.id, db);
   const theme = useTheme();
+  const lang = useLang();
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(0);
   const [tables, setTables] = useState<GoTableInfo[] | null>(null);
@@ -74,33 +81,35 @@ function Palette({ onClose }: { onClose: () => void }) {
     const go = (to: string) => () => { nav(to); onClose(); };
     if (conn && db !== undefined) {
       const base = `/c/${conn.id}/db/${encodeURIComponent(db)}`;
-      for (const t of tables ?? []) {
-        out.push({ id: `t:${t.name}`, label: t.name, hint: t.kind === 'view' ? 'View' : `${t.columns?.length ?? 0} columns`, group: conn.name, icon: Icons.db, run: go(`${base}/t/${encodeURIComponent(t.name)}`) });
+      for (const tb of tables ?? []) {
+        out.push({ id: `t:${tb.name}`, label: tb.name, hint: tb.kind === 'view' ? t('View') : tp(tb.columns?.length ?? 0, '{n} column', '{n} columns'), group: conn.name, icon: Icons.db, run: go(`${base}/t/${encodeURIComponent(tb.name)}`) });
       }
-      if (isSqlKind(conn.kind)) out.push({ id: 'sql', label: 'SQL console', hint: conn.name, group: 'Pages', icon: Icons.code, run: go(`${base}/query`) });
+      if (isSqlKind(conn.kind)) out.push({ id: 'sql', ...L(tx('SQL console')), hint: conn.name, group: t('Pages'), icon: Icons.code, run: go(`${base}/query`) });
     }
     for (const c of connections) {
-      out.push({ id: `c:${c.id}`, label: c.name, hint: KIND_STYLE[c.kind]?.label, group: 'Servers', icon: <KindBadge kind={c.kind} small />, run: go(`/c/${c.id}/dbs`) });
+      out.push({ id: `c:${c.id}`, label: c.name, hint: KIND_STYLE[c.kind]?.label, group: t('Servers'), icon: <KindBadge kind={c.kind} small />, run: go(`/c/${c.id}/dbs`) });
     }
     out.push(
-      { id: 'servers', label: 'All servers', group: 'Pages', icon: Icons.server, run: go('/connections') },
-      { id: 'about', label: 'About · updates', group: 'Pages', icon: Icons.info, run: go('/about') },
-      { id: 'theme', label: `Theme: ${theme} → ${nextTheme(theme)}`, hint: 'Switch colour theme', group: 'Settings', icon: Icons.theme, run: () => setTheme(nextTheme(theme)) },
-      { id: 'update', label: 'Check for updates', group: 'App', icon: Icons.refresh, run: () => { void checkForUpdates(); nav('/about'); onClose(); } },
-      { id: 'versions', label: 'Version history · what\'s new', group: 'App', icon: Icons.history, run: go('/about/versions') },
-      { id: 'bug', label: 'Report a bug', hint: 'GitHub Issues', group: 'App', icon: Icons.bug, run: () => { nav('/about', { state: { feedback: 'bug' } }); onClose(); } },
-      { id: 'feature', label: 'Request a feature', hint: 'GitHub Issues', group: 'App', icon: Icons.bulb, run: () => { nav('/about', { state: { feedback: 'feature' } }); onClose(); } },
-      { id: 'question', label: 'Ask a question', hint: 'GitHub Issues', group: 'App', icon: Icons.help, run: () => { nav('/about', { state: { feedback: 'question' } }); onClose(); } },
-      { id: 'sponsor', label: 'Sponsor development', hint: 'GitHub Sponsors', group: 'App', icon: Icons.heart, run: () => { openExternal(SPONSOR_URL); onClose(); } }
+      { id: 'servers', ...L(tx('All servers')), group: t('Pages'), icon: Icons.server, run: go('/connections') },
+      { id: 'about', ...L(tx('About · updates')), group: t('Pages'), icon: Icons.info, run: go('/about') },
+      { id: 'theme', label: t('Theme: {from} → {to}', { from: t(THEME_NAME[theme]), to: t(THEME_NAME[nextTheme(theme)]) }), hint: t('Switch colour theme'), group: t('Settings'), icon: Icons.theme, run: () => setTheme(nextTheme(theme)) },
+      // both names, so either "language" or "언어" / "English" / "한국어" finds it
+      { id: 'lang', label: getLang() === 'en' ? '한국어로 보기 · Korean' : 'English · 영어로 보기', hint: 'Language · 언어', group: t('Settings'), icon: Icons.globe, run: () => { void setLang(getLang() === 'en' ? 'ko' : 'en'); onClose(); } },
+      { id: 'update', ...L(tx('Check for updates')), group: t('App'), icon: Icons.refresh, run: () => { void checkForUpdates(); nav('/about'); onClose(); } },
+      { id: 'versions', ...L(tx("Version history · what's new")), group: t('App'), icon: Icons.history, run: go('/about/versions') },
+      { id: 'bug', ...L(tx('Report a bug')), hint: 'GitHub Issues', group: t('App'), icon: Icons.bug, run: () => { nav('/about', { state: { feedback: 'bug' } }); onClose(); } },
+      { id: 'feature', ...L(tx('Request a feature')), hint: 'GitHub Issues', group: t('App'), icon: Icons.bulb, run: () => { nav('/about', { state: { feedback: 'feature' } }); onClose(); } },
+      { id: 'question', ...L(tx('Ask a question')), hint: 'GitHub Issues', group: t('App'), icon: Icons.help, run: () => { nav('/about', { state: { feedback: 'question' } }); onClose(); } },
+      { id: 'sponsor', ...L(tx('Sponsor development')), hint: 'GitHub Sponsors', group: t('App'), icon: Icons.heart, run: () => { openExternal(SPONSOR_URL); onClose(); } }
     );
     return out;
-  }, [conn, db, tables, connections, theme, nav, onClose]);
+  }, [conn, db, tables, connections, theme, lang, nav, onClose]);
 
   const shown = useMemo(() => {
     if (!q.trim()) return items.slice(0, 60);
     return items
       // the group (server name) counts only when the query has several words, e.g. "prod ord"
-      .map((it) => ({ it, s: /\s/.test(q.trim()) ? Math.max(fuzzyScore(it.label, q), fuzzyScore(`${it.group} ${it.label}`, q) - 2) : fuzzyScore(it.label, q) }))
+      .map((it) => ({ it, s: Math.max(fuzzyScore(it.label, q), it.alt ? fuzzyScore(it.alt, q) - 0.5 : -1, /\s/.test(q.trim()) ? fuzzyScore(`${it.group} ${it.label}`, q) - 2 : -1) }))
       .filter((x) => x.s >= 0)
       .sort((a, b) => b.s - a.s)
       .slice(0, 60)
@@ -120,11 +129,11 @@ function Palette({ onClose }: { onClose: () => void }) {
   let lastGroup = '';
   return (
     <div className="modal-bg palette-bg" onClick={onClose}>
-      <div className="palette" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Quick open">
+      <div className="palette" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('Quick open')}>
         <div className="palette-in">
           {Icons.search}
           <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} spellCheck={false}
-            placeholder={tables?.length ? 'Jump to a table, server or page…' : 'Jump to a server or page…'}
+            placeholder={tables?.length ? t('Jump to a table, server or page…') : t('Jump to a server or page…')}
             role="combobox" aria-expanded="true" aria-controls="palette-list" aria-activedescendant={shown[sel] ? `pi-${sel}` : undefined} />
           <kbd>Esc</kbd>
         </div>
@@ -143,9 +152,9 @@ function Palette({ onClose }: { onClose: () => void }) {
               </div>
             );
           })}
-          {!shown.length && <div className="empty">No matches</div>}
+          {!shown.length && <div className="empty">{t('No matches')}</div>}
         </div>
-        <div className="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Ctrl</kbd><kbd>K</kbd> toggle</span></div>
+        <div className="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd> {t('move')}</span><span><kbd>Enter</kbd> {t('open')}</span><span><kbd>Ctrl</kbd><kbd>K</kbd> {t('toggle')}</span></div>
       </div>
     </div>
   );

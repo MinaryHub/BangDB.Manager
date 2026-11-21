@@ -11,6 +11,7 @@ import { EmptyState, Field, Modal, describeResult, useConfirm, useToast } from '
 import { Icons, KindBadge } from '../components/kinds';
 import { isGatewayKind, newId, normalize, store, useConnections } from '../store/store';
 import { isElectron } from '../platform';
+import { t, tp, tx } from '../i18n';
 
 export default function ConnectionsPage() {
   const connections = useConnections();
@@ -38,18 +39,18 @@ export default function ConnectionsPage() {
 
   return (
     <>
-      <TopBar title="Connections" right={<button className="btn primary" onClick={() => setEditing({ conn: blank(), isNew: true })}>{Icons.plus}Add</button>} />
+      <TopBar title={t('Connections')} right={<button className="btn primary" onClick={() => setEditing({ conn: blank(), isNew: true })}>{Icons.plus}{t('Add')}</button>} />
       {connections.length === 0 && (
         <>
-          <EmptyState icon={Icons.server} title="No servers yet"
-            action={<button className="btn primary" onClick={() => setEditing({ conn: blank(), isNew: true })}>{Icons.plus}Add your first server</button>}>
-            Pick a server type, enter its address and credentials, and you can work with tables, data and SQL right here.
+          <EmptyState icon={Icons.server} title={t('No servers yet')}
+            action={<button className="btn primary" onClick={() => setEditing({ conn: blank(), isNew: true })}>{Icons.plus}{t('Add your first server')}</button>}>
+            {t('Pick a server type, enter its address and credentials, and you can work with tables, data and SQL right here.')}
           </EmptyState>
           <div className="guide">
-            <div className="g"><b><KindBadge kind="go" small />BangDB (Go)</b>Run knoxxr/bangdb with <code>bangdb -http :18081 -password …</code> and it connects directly, no proxy needed.</div>
-            <div className="g"><b><KindBadge kind="postgres" small />PostgreSQL · MySQL · SQL Server · SQLite</b>Connects through the DB gateway on the server that hosts this app. The desktop app has the gateway built in.</div>
-            <div className="g"><b><KindBadge kind="mongodb" small />MongoDB · Redis</b>Dedicated collection/document and key browser views. Also goes through the gateway.</div>
-            <div className="g"><b><KindBadge kind="rest" small />BangDB 2.0 REST</b>Port 18080 of a bangdb.com server. If the browser reports a CORS error, turn on "Via proxy".</div>
+            <div className="g"><b><KindBadge kind="go" small />BangDB (Go)</b>{t('Run knoxxr/bangdb with')} <code>bangdb -http :18081 -http-cors '*' -password …</code> {t('and it connects directly, no proxy needed.')}</div>
+            <div className="g"><b><KindBadge kind="postgres" small />PostgreSQL · MySQL · SQL Server · SQLite</b>{t('Connects through the DB gateway on the server that hosts this app. The desktop app has the gateway built in.')}</div>
+            <div className="g"><b><KindBadge kind="mongodb" small />MongoDB · Redis</b>{t('Dedicated collection/document and key browser views. Also goes through the gateway.')}</div>
+            <div className="g"><b><KindBadge kind="rest" small />BangDB 2.0 REST</b>{t('Port 18080 of a bangdb.com server. If the browser reports a CORS error, turn on "Via proxy".')}</div>
           </div>
         </>
       )}
@@ -58,20 +59,20 @@ export default function ConnectionsPage() {
           <div key={c.id} className="conn" onClick={() => nav(`/c/${c.id}/dbs`)} role="link" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && nav(`/c/${c.id}/dbs`)}>
             <KindBadge kind={c.kind} />
             <div className="meta">
-              <div className="title"><span className={`dot ${status[c.id] ?? ''}`} title={status[c.id] === 'ok' ? 'Connected' : status[c.id] === 'err' ? 'Unreachable' : 'Checking'} /><span className="name">{c.name}</span></div>
+              <div className="title"><span className={`dot ${status[c.id] ?? ''}`} title={status[c.id] === 'ok' ? t('Connected') : status[c.id] === 'err' ? t('Unreachable') : t('Checking')} /><span className="name">{c.name}</span></div>
               <div className="sub">{connTarget(c)}</div>
               <div className="tags">
                 <span className="badge">{kindLabel(c.kind)}</span>
-                {c.kind === 'rest' && <span className="badge">{c.databases.length} {c.databases.length === 1 ? 'DB' : 'DBs'}</span>}
+                {c.kind === 'rest' && <span className="badge">{tp(c.databases.length, '{n} DB', '{n} DBs')}</span>}
                 {!c.db && <span className="badge">{authLabel(c.auth.mode)}</span>}
-                {c.useProxy && <span className="badge accent">Proxy</span>}
-                {status[c.id] === 'err' && <span className="badge err">Unreachable</span>}
+                {c.useProxy && <span className="badge accent">{t('Proxy')}</span>}
+                {status[c.id] === 'err' && <span className="badge err">{t('Unreachable')}</span>}
               </div>
             </div>
             <div className="acts" onClick={(e) => e.stopPropagation()}>
-              <button className="btn ghost icon sm" title="Edit" aria-label="Edit" onClick={() => setEditing({ conn: c, isNew: false })}>{Icons.edit}</button>
-              <button className="btn ghost icon sm" title="Duplicate" aria-label="Duplicate" onClick={() => setEditing({ conn: { ...c, id: newId(), name: `${c.name} (copy)`, createdAt: Date.now() }, isNew: true })}>{Icons.copy}</button>
-              <button className="btn ghost icon sm danger" title="Delete" aria-label="Delete" onClick={async () => { if (await confirm(`Delete the connection "${c.name}"? (Server data is not deleted)`)) { store.removeConnection(c.id); toast('Connection deleted'); } }}>{Icons.trash}</button>
+              <button className="btn ghost icon sm" title={t('Edit')} aria-label={t('Edit')} onClick={() => setEditing({ conn: c, isNew: false })}>{Icons.edit}</button>
+              <button className="btn ghost icon sm" title={t('Duplicate')} aria-label={t('Duplicate')} onClick={() => setEditing({ conn: { ...c, id: newId(), name: t('{name} (copy)', { name: c.name }), createdAt: Date.now() }, isNew: true })}>{Icons.copy}</button>
+              <button className="btn ghost icon sm danger" title={t('Delete')} aria-label={t('Delete')} onClick={async () => { if (await confirm(t('Delete the connection "{name}"? (Server data is not deleted)', { name: c.name }))) { store.removeConnection(c.id); toast(t('Connection deleted')); } }}>{Icons.trash}</button>
             </div>
             <span className="chev">{Icons.chevron}</span>
           </div>
@@ -82,7 +83,7 @@ export default function ConnectionsPage() {
           initial={editing.conn}
           isNew={editing.isNew}
           onClose={() => setEditing(null)}
-          onSave={(c) => { store.upsertConnection(c); setEditing(null); toast('Saved', 'ok'); }}
+          onSave={(c) => { store.upsertConnection(c); setEditing(null); toast(t('Saved'), 'ok'); }}
         />
       )}
       {confirmEl}
@@ -102,23 +103,24 @@ export function connTarget(c: Connection): string {
   if (!c.db) return c.baseUrl;
   const d = c.db;
   const where = d.uri ? d.uri.replace(/\/\/[^@/]*@/, '//***@') : c.kind === 'sqlite' ? d.file ?? '' : `${d.host || '127.0.0.1'}:${d.port || DEFAULT_PORT[c.kind] || ''}${d.database ? `/${d.database}` : ''}`;
-  return `${where} · gateway ${c.baseUrl || '(this app server)'}`;
+  return `${where} · ${t('gateway {url}', { url: c.baseUrl || t('(this app server)') })}`;
 }
-const authLabel = (m: AuthMode) => ({ none: 'None', apikey: 'API key', basic: 'Basic', login: 'Login' }[m]);
+const AUTH_LABEL: Record<AuthMode, string> = { none: tx('None'), apikey: tx('API key'), basic: tx('Basic'), login: tx('Login') };
+const authLabel = (m: AuthMode) => t(AUTH_LABEL[m]);
 
 function ConnectionForm({ initial, isNew, onClose, onSave }: { initial: Connection; isNew: boolean; onClose: () => void; onSave: (c: Connection) => void }) {
   const [c, setC] = useState<Connection>(initial);
   const [testing, setTesting] = useState(false);
-  const [testMsg, setTestMsg] = useState<string | null>(null);
+  const [testMsg, setTestMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const toast = useToast();
   const up = (p: Partial<Connection>) => setC((x) => ({ ...x, ...p }));
   const upAuth = (p: Partial<Connection['auth']>) => setC((x) => ({ ...x, auth: { ...x.auth, ...p } }));
 
   async function doLogin(conn: Connection): Promise<Connection> {
     const r = await login(conn);
-    if (!r.ok) throw new Error(`Login failed: ${describeResult(r)}`);
+    if (!r.ok) throw new Error(t('Login failed: {error}', { error: describeResult(r) }));
     const token = extractToken(r.data, conn.auth.tokenField);
-    if (!token) throw new Error(`The login response has no "${conn.auth.tokenField}" field`);
+    if (!token) throw new Error(t('The login response has no "{field}" field', { field: conn.auth.tokenField }));
     return { ...conn, auth: { ...conn.auth, token } };
   }
 
@@ -128,35 +130,35 @@ function ConnectionForm({ initial, isNew, onClose, onSave }: { initial: Connecti
       let conn = normalize(c);
       if (conn.db) {
         const h = await gw<{ ok: boolean; version?: string }>(conn, 'health');
-        if (h.ok) setTestMsg(`Connected: ${h.data.version ?? kindLabel(conn.kind)} (${h.durationMs}ms)`);
-        else setTestMsg(`Failed: ${errorText(h)}${h.status === 0 || h.status === 404 ? ' — could not reach the gateway. Check that this app was started with proxy/server.mjs or npm run dev, and that the gateway URL is correct.' : ''}`);
+        if (h.ok) setTestMsg({ ok: true, text: t('Connected: {what} ({ms}ms)', { what: h.data.version ?? kindLabel(conn.kind), ms: h.durationMs }) });
+        else setTestMsg({ ok: false, text: t('Failed: {error}', { error: errorText(h) }) + (h.status === 0 || h.status === 404 ? t(' — could not reach the gateway. Check that this app was started with proxy/server.mjs or npm run dev, and that the gateway URL is correct.') : '') });
         return;
       }
       if (conn.auth.mode === 'login') { conn = await doLogin(conn); setC(conn); }
       if (conn.kind === 'go') {
         const h = await goHealth(conn);
-        if (!h.ok) { setTestMsg(`Failed: ${describeResult(h)} — check that bangdb was started with the -http option and that the address/port is correct.`); return; }
+        if (!h.ok) { setTestMsg({ ok: false, text: t('Failed: {error}', { error: describeResult(h) }) + t(' — check that bangdb was started with the -http option (and -http-cors for browsers) and that the address/port is correct.') }); return; }
       }
       const r = await ping(conn, conn.defaultDb);
-      if (r.ok) setTestMsg(`Connected: ${extractTables(r.data).length} tables (${r.durationMs}ms)`);
-      else setTestMsg(`Failed: ${describeResult(r)}${r.status === 0 && !conn.useProxy ? ' — in a browser this may be a CORS or network problem. Try turning on "Via proxy".' : ''}`);
+      if (r.ok) setTestMsg({ ok: true, text: t('Connected: {what} ({ms}ms)', { what: tp(extractTables(r.data).length, '{n} table', '{n} tables'), ms: r.durationMs }) });
+      else setTestMsg({ ok: false, text: t('Failed: {error}', { error: describeResult(r) }) + (r.status === 0 && !conn.useProxy ? t(' — in a browser this may be a CORS or network problem. Try turning on "Via proxy".') : '') });
     } catch (e) {
-      setTestMsg(e instanceof Error ? e.message : String(e));
+      setTestMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
     } finally { setTesting(false); }
   }
 
   async function save() {
     if (isGatewayKind(c.kind)) {
       const d = c.db ?? {};
-      if (c.kind === 'sqlite' ? !d.file?.trim() : !(d.uri?.trim() || d.host?.trim())) { toast(c.kind === 'sqlite' ? 'Specify the SQLite file' : 'Enter a host or a connection string', 'err'); return; }
-    } else if (!c.baseUrl.trim()) { toast('Enter the server URL', 'err'); return; }
+      if (c.kind === 'sqlite' ? !d.file?.trim() : !(d.uri?.trim() || d.host?.trim())) { toast(c.kind === 'sqlite' ? t('Specify the SQLite file') : t('Enter a host or a connection string'), 'err'); return; }
+    } else if (!c.baseUrl.trim()) { toast(t('Enter the server URL'), 'err'); return; }
     onSave(normalize(c));
   }
   const gateway = isGatewayKind(c.kind);
 
   return (
-    <Modal title={isNew ? 'Add connection' : 'Edit connection'} onClose={onClose}>
-      <Field label="Server type">
+    <Modal title={isNew ? t('Add connection') : t('Edit connection')} onClose={onClose}>
+      <Field label={t('Server type')}>
         <select value={c.kind} onChange={(e) => {
           const kind = e.target.value as ServerKind;
           if (isGatewayKind(kind)) {
@@ -168,70 +170,70 @@ function ConnectionForm({ initial, isNew, onClose, onSave }: { initial: Connecti
           if (kind === 'go') upAuth({ mode: 'basic' });
         }}>
           <optgroup label="BangDB">
-            <option value="go">BangDB (Go) HTTP API — bangdb -http (port 18081)</option>
-            <option value="rest">BangDB 2.0 REST — bangdb.com server (port 18080)</option>
+            <option value="go">{t('BangDB (Go) HTTP API — bangdb -http (port 18081)')}</option>
+            <option value="rest">{t('BangDB 2.0 REST — bangdb.com server (port 18080)')}</option>
           </optgroup>
-          <optgroup label="Relational DB (via gateway)">
+          <optgroup label={t('Relational DB (via gateway)')}>
             <option value="postgres">PostgreSQL</option>
             <option value="mysql">MySQL / MariaDB</option>
             <option value="mssql">Microsoft SQL Server</option>
-            <option value="sqlite">SQLite (file on the gateway PC)</option>
+            <option value="sqlite">{t('SQLite (file on the gateway PC)')}</option>
           </optgroup>
-          <optgroup label="NoSQL (via gateway)">
+          <optgroup label={t('NoSQL (via gateway)')}>
             <option value="mongodb">MongoDB</option>
             <option value="redis">Redis</option>
           </optgroup>
         </select>
       </Field>
-      <Field label="Name"><input value={c.name} onChange={(e) => up({ name: e.target.value })} placeholder={gateway ? `e.g. Production ${kindLabel(c.kind)}` : 'e.g. Office BangDB'} /></Field>
+      <Field label={t('Name')}><input value={c.name} onChange={(e) => up({ name: e.target.value })} placeholder={gateway ? t('e.g. Production {kind}', { kind: kindLabel(c.kind) }) : t('e.g. Office BangDB')} /></Field>
       {gateway && <GatewayFields c={c} up={up} />}
-      {!gateway && <><Field label={c.kind === 'go' ? 'Server URL (bangdb -http address, default port 18081)' : 'Server URL (REST port, default 18080)'}><input className="mono" value={c.baseUrl} inputMode="url" onChange={(e) => up({ baseUrl: e.target.value })} placeholder={c.kind === 'go' ? 'http://192.168.0.10:18081' : 'http://192.168.0.10:18080'} /></Field>
-      {c.kind === 'rest' && <Field label="Default database (BANGDB_DATABASE_NAME in bangdb.config)"><input className="mono" value={c.defaultDb} onChange={(e) => up({ defaultDb: e.target.value })} placeholder="mydb" /></Field>}
+      {!gateway && <><Field label={c.kind === 'go' ? t('Server URL (bangdb -http address, default port 18081)') : t('Server URL (REST port, default 18080)')}><input className="mono" value={c.baseUrl} inputMode="url" onChange={(e) => up({ baseUrl: e.target.value })} placeholder={c.kind === 'go' ? 'http://192.168.0.10:18081' : 'http://192.168.0.10:18080'} /></Field>
+      {c.kind === 'rest' && <Field label={t('Default database (BANGDB_DATABASE_NAME in bangdb.config)')}><input className="mono" value={c.defaultDb} onChange={(e) => up({ defaultDb: e.target.value })} placeholder="mydb" /></Field>}
       {c.kind === 'go' && (
-        <Field label="Password (the bangdb -password value; leave empty if none)">
+        <Field label={t('Password (the bangdb -password value; leave empty if none)')}>
           <input type="password" autoComplete="current-password" value={c.auth.pass ?? ''} onChange={(e) => upAuth({ mode: 'basic', user: c.auth.user || 'app', pass: e.target.value })} />
         </Field>
       )}
-      {c.kind === 'rest' && <Field label="Authentication">
+      {c.kind === 'rest' && <Field label={t('Authentication')}>
         <select value={c.auth.mode} onChange={(e) => upAuth({ mode: e.target.value as AuthMode })}>
-          <option value="none">None</option>
-          <option value="apikey">API key header</option>
-          <option value="login">Login (user/password → token)</option>
+          <option value="none">{t('None')}</option>
+          <option value="apikey">{t('API key header')}</option>
+          <option value="login">{t('Login (user/password → token)')}</option>
           <option value="basic">HTTP Basic</option>
         </select>
       </Field>}
       {c.kind === 'rest' && c.auth.mode === 'apikey' && (
         <div className="grid2">
-          <Field label="Header name"><input className="mono" value={c.auth.headerName} onChange={(e) => upAuth({ headerName: e.target.value })} /></Field>
-          <Field label="API key"><input className="mono" type="password" value={c.auth.apiKey ?? ''} onChange={(e) => upAuth({ apiKey: e.target.value })} /></Field>
+          <Field label={t('Header name')}><input className="mono" value={c.auth.headerName} onChange={(e) => upAuth({ headerName: e.target.value })} /></Field>
+          <Field label={t('API key')}><input className="mono" type="password" value={c.auth.apiKey ?? ''} onChange={(e) => upAuth({ apiKey: e.target.value })} /></Field>
         </div>
       )}
       {c.kind === 'rest' && (c.auth.mode === 'login' || c.auth.mode === 'basic') && (
         <div className="grid2">
-          <Field label="User"><input value={c.auth.user ?? ''} autoComplete="username" onChange={(e) => upAuth({ user: e.target.value })} /></Field>
-          <Field label="Password"><input type="password" autoComplete="current-password" value={c.auth.pass ?? ''} onChange={(e) => upAuth({ pass: e.target.value })} /></Field>
+          <Field label={t('User')}><input value={c.auth.user ?? ''} autoComplete="username" onChange={(e) => upAuth({ user: e.target.value })} /></Field>
+          <Field label={t('Password')}><input type="password" autoComplete="current-password" value={c.auth.pass ?? ''} onChange={(e) => upAuth({ pass: e.target.value })} /></Field>
         </div>
       )}
       {c.kind === 'rest' && c.auth.mode === 'login' && (
         <div className="grid2">
-          <Field label="Token header name"><input className="mono" value={c.auth.headerName} onChange={(e) => upAuth({ headerName: e.target.value })} /></Field>
-          <Field label="Token field in response"><input className="mono" value={c.auth.tokenField} onChange={(e) => upAuth({ tokenField: e.target.value })} /></Field>
+          <Field label={t('Token header name')}><input className="mono" value={c.auth.headerName} onChange={(e) => upAuth({ headerName: e.target.value })} /></Field>
+          <Field label={t('Token field in response')}><input className="mono" value={c.auth.tokenField} onChange={(e) => upAuth({ tokenField: e.target.value })} /></Field>
         </div>
       )}
-      <label className="check"><input type="checkbox" checked={c.useProxy} onChange={(e) => up({ useProxy: e.target.checked })} /> Via proxy (requests go to /bangdb on the app's host, avoids CORS{isElectron ? ' · built into the desktop app' : ''})</label>
+      <label className="check"><input type="checkbox" checked={c.useProxy} onChange={(e) => up({ useProxy: e.target.checked })} /> {isElectron ? t('Via proxy (requests go to /bangdb on the app\'s host, avoids CORS · built into the desktop app)') : t('Via proxy (requests go to /bangdb on the app\'s host, avoids CORS)')}</label>
       </>}
 
       {!gateway && <details className="adv">
-        <summary>Advanced: override REST endpoint templates</summary>
-        <p className="muted small">{c.kind === 'go' ? 'knoxxr/bangdb HTTP API paths. Change them here if your server version differs.' : 'Entries verified against the BangDB docs are marked ✔; the rest are unverified guesses based on convention. Change the path/method here if your server version differs.'}</p>
+        <summary>{t('Advanced: override REST endpoint templates')}</summary>
+        <p className="muted small">{c.kind === 'go' ? t('knoxxr/bangdb HTTP API paths. Change them here if your server version differs.') : t('Entries verified against the BangDB docs are marked ✔; the rest are unverified guesses based on convention. Change the path/method here if your server version differs.')}</p>
         {(c.kind === 'go' ? GO_KEYS : REST_KEYS).map((k) => <EndpointRow key={k} k={k} value={c.endpointOverrides[k]} onChange={(v) => up({ endpointOverrides: { ...c.endpointOverrides, [k]: v } })} />)}
       </details>}
 
-      {testMsg && <p className={`small ${testMsg.startsWith('Connected') ? 'ok' : 'danger'}`}>{testMsg}</p>}
+      {testMsg && <p className={`small ${testMsg.ok ? 'ok' : 'danger'}`}>{testMsg.text}</p>}
       <div className="actions">
-        <button className="btn" onClick={test} disabled={testing}>{testing ? 'Testing…' : 'Test connection'}</button>
-        <button className="btn" onClick={onClose}>Cancel</button>
-        <button className="btn primary" onClick={save}>Save</button>
+        <button className="btn" onClick={test} disabled={testing}>{testing ? t('Testing…') : t('Test connection')}</button>
+        <button className="btn" onClick={onClose}>{t('Cancel')}</button>
+        <button className="btn primary" onClick={save}>{t('Save')}</button>
       </div>
     </Modal>
   );
@@ -249,56 +251,56 @@ function GatewayFields({ c, up }: { c: Connection; up: (p: Partial<Connection>) 
     mongodb: 'mongodb+srv://user:pass@cluster.example.net/?retryWrites=true', redis: 'redis://:pass@host:6379/0',
     mssql: 'Server=host,1433;Database=db;User Id=sa;Password=…;Encrypt=true'
   };
-  const dbHint: Partial<Record<ServerKind, string>> = { postgres: 'postgres', mysql: '(optional)', mssql: 'master', mongodb: 'test', redis: '0' };
+  const dbHint: Partial<Record<ServerKind, string>> = { postgres: 'postgres', mysql: t('(optional)'), mssql: 'master', mongodb: 'test', redis: '0' };
   return (
     <>
       {c.kind === 'sqlite' ? (
         <>
-          <Field label="SQLite file (path relative to the gateway's SQLITE_ROOT)">
+          <Field label={t('SQLite file (path relative to the gateway\'s SQLITE_ROOT)')}>
             <div className="row">
               <input className="mono grow" value={d.file ?? ''} placeholder="app.db" onChange={(e) => set({ file: e.target.value })} />
-              <button className="btn sm" onClick={async () => { const r = await gwSqliteFiles(normalize(c)); if (r.ok) setFiles(r.data); }}>Browse</button>
+              <button className="btn sm" onClick={async () => { const r = await gwSqliteFiles(normalize(c)); if (r.ok) setFiles(r.data); }}>{t('Browse')}</button>
             </div>
           </Field>
           {files && (
             <div className="card" style={{ padding: 8 }}>
-              <div className="muted small">SQLITE_ROOT: <span className="mono">{files.root}</span> — a file name that does not exist yet will be created</div>
+              <div className="muted small">SQLITE_ROOT: <span className="mono">{files.root}</span> — {t('a file name that does not exist yet will be created')}</div>
               <div className="chips" style={{ marginTop: 6 }}>
                 {files.files.map((f) => <span key={f.file} className={`chip ${d.file === f.file ? 'on' : ''}`} onClick={() => set({ file: f.file })}>{f.file} <span className="muted">{fmtBytes(f.size)}</span></span>)}
-                {!files.files.length && <span className="muted small">No .db / .sqlite files</span>}
+                {!files.files.length && <span className="muted small">{t('No .db / .sqlite files')}</span>}
               </div>
             </div>
           )}
         </>
       ) : (
         <>
-          <label className="check"><input type="checkbox" checked={useUri} onChange={(e) => { setUseUri(e.target.checked); if (!e.target.checked) set({ uri: undefined }); }} /> Enter as a connection string (URI)</label>
+          <label className="check"><input type="checkbox" checked={useUri} onChange={(e) => { setUseUri(e.target.checked); if (!e.target.checked) set({ uri: undefined }); }} /> {t('Enter as a connection string (URI)')}</label>
           {useUri ? (
-            <Field label="Connection string"><input className="mono" value={d.uri ?? ''} placeholder={uriHint[c.kind]} onChange={(e) => set({ uri: e.target.value })} /></Field>
+            <Field label={t('Connection string')}><input className="mono" value={d.uri ?? ''} placeholder={uriHint[c.kind]} onChange={(e) => set({ uri: e.target.value })} /></Field>
           ) : (
             <>
               <div className="grid2">
-                <Field label="Host"><input className="mono" value={d.host ?? ''} placeholder="192.168.0.10" inputMode="url" onChange={(e) => set({ host: e.target.value })} /></Field>
-                <Field label="Port"><input className="mono" type="number" value={d.port ?? ''} placeholder={String(DEFAULT_PORT[c.kind] ?? '')} onChange={(e) => set({ port: Number(e.target.value) || undefined })} /></Field>
-                <Field label={c.kind === 'redis' ? 'User (ACL; leave empty if none)' : 'User'}><input value={d.user ?? ''} autoComplete="username" onChange={(e) => set({ user: e.target.value })} /></Field>
-                <Field label="Password"><input type="password" autoComplete="current-password" value={d.password ?? ''} onChange={(e) => set({ password: e.target.value })} /></Field>
-                <Field label={c.kind === 'redis' ? 'DB index (0–15)' : 'Default database'}>
+                <Field label={t('Host')}><input className="mono" value={d.host ?? ''} placeholder="192.168.0.10" inputMode="url" onChange={(e) => set({ host: e.target.value })} /></Field>
+                <Field label={t('Port')}><input className="mono" type="number" value={d.port ?? ''} placeholder={String(DEFAULT_PORT[c.kind] ?? '')} onChange={(e) => set({ port: Number(e.target.value) || undefined })} /></Field>
+                <Field label={c.kind === 'redis' ? t('User (ACL; leave empty if none)') : t('User')}><input value={d.user ?? ''} autoComplete="username" onChange={(e) => set({ user: e.target.value })} /></Field>
+                <Field label={t('Password')}><input type="password" autoComplete="current-password" value={d.password ?? ''} onChange={(e) => set({ password: e.target.value })} /></Field>
+                <Field label={c.kind === 'redis' ? t('DB index (0–15)') : t('Default database')}>
                   <input className="mono" value={d.database ?? ''} placeholder={dbHint[c.kind]} onChange={(e) => set({ database: e.target.value })} />
                 </Field>
-                {c.kind === 'mongodb' && <Field label="authSource (optional)"><input className="mono" value={d.authSource ?? ''} placeholder="admin" onChange={(e) => set({ authSource: e.target.value })} /></Field>}
+                {c.kind === 'mongodb' && <Field label={t('authSource (optional)')}><input className="mono" value={d.authSource ?? ''} placeholder="admin" onChange={(e) => set({ authSource: e.target.value })} /></Field>}
               </div>
-              <label className="check"><input type="checkbox" checked={!!d.ssl} onChange={(e) => set({ ssl: e.target.checked })} /> Use TLS/SSL</label>
-              {d.ssl && <label className="check"><input type="checkbox" checked={!!d.sslInsecure} onChange={(e) => set({ sslInsecure: e.target.checked })} /> <span className="warn">Skip TLS verification</span> <span className="muted small">(for self-signed certificates; exposes you to man-in-the-middle attacks)</span></label>}
+              <label className="check"><input type="checkbox" checked={!!d.ssl} onChange={(e) => set({ ssl: e.target.checked })} /> {t('Use TLS/SSL')}</label>
+              {d.ssl && <label className="check"><input type="checkbox" checked={!!d.sslInsecure} onChange={(e) => set({ sslInsecure: e.target.checked })} /> <span className="warn">{t('Skip TLS verification')}</span> <span className="muted small">{t('(for self-signed certificates; exposes you to man-in-the-middle attacks)')}</span></label>}
             </>
           )}
         </>
       )}
       <details className="adv" open={native || !!c.baseUrl}>
-        <summary>Gateway {c.baseUrl ? `— ${c.baseUrl}` : '— the server hosting this app'}</summary>
-        <p className="muted small">Browsers and phones cannot connect to a database directly, so requests go through a gateway (<code>node proxy/server.mjs</code> or <code>npm run dev</code>) running on a PC that can reach the database. {native ? 'In the phone app the gateway URL is required.' : 'Leave empty to use the server that hosts this app.'}</p>
+        <summary>{t('Gateway')} — {c.baseUrl || t('the server hosting this app')}</summary>
+        <p className="muted small">{t('Browsers and phones cannot connect to a database directly, so requests go through a gateway running on a PC that can reach the database:')} <code>node proxy/server.mjs</code> · <code>npm run dev</code>. {native ? t('In the phone app the gateway URL is required.') : t('Leave empty to use the server that hosts this app.')}</p>
         <div className="grid2">
-          <Field label="Gateway URL"><input className="mono" value={c.baseUrl} placeholder="http://192.168.0.5:8080" inputMode="url" onChange={(e) => up({ baseUrl: e.target.value })} /></Field>
-          <Field label="Gateway token (GATEWAY_TOKEN)"><input className="mono" type="password" value={c.gatewayToken ?? ''} onChange={(e) => up({ gatewayToken: e.target.value })} /></Field>
+          <Field label={t('Gateway URL')}><input className="mono" value={c.baseUrl} placeholder="http://192.168.0.5:8080" inputMode="url" onChange={(e) => up({ baseUrl: e.target.value })} /></Field>
+          <Field label={t('Gateway token (GATEWAY_TOKEN)')}><input className="mono" type="password" value={c.gatewayToken ?? ''} onChange={(e) => up({ gatewayToken: e.target.value })} /></Field>
         </div>
       </details>
     </>
@@ -318,7 +320,7 @@ function EndpointRow({ k, value, onChange }: { k: EndpointKey; value?: EndpointD
         {(['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as HttpMethod[]).map((m) => <option key={m}>{m}</option>)}
       </select>
       <input className="mono grow" value={cur.path} onChange={(e) => onChange({ ...cur, path: e.target.value })} title={d.note} />
-      {value && <button className="btn sm ghost" onClick={() => onChange(undefined)} title="Reset to default">↺</button>}
+      {value && <button className="btn sm ghost" onClick={() => onChange(undefined)} title={t('Reset to default')}>↺</button>}
     </div>
   );
 }

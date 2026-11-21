@@ -12,6 +12,7 @@ import { app, dialog, shell } from 'electron';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import updater from 'electron-updater';
+import { tr } from './i18n.mjs';
 
 const { autoUpdater } = updater;
 export const REPO = 'knoxxr/BangDB.Manager';
@@ -100,7 +101,7 @@ export function updateIpc(ipcMain) {
 /** Check now. With manual=true the result is always shown in a dialog. */
 export async function check(manual, { force = false } = {}) {
   if (state.mode === 'off') {
-    if (manual) dialog.showMessageBox(win(), { type: 'info', message: 'Automatic updates are off', detail: app.isPackaged ? 'The BANGDB_MANAGER_NO_UPDATE environment variable is set.' : 'Not available in development mode.' });
+    if (manual) dialog.showMessageBox(win(), { type: 'info', message: tr('Automatic updates are off'), detail: app.isPackaged ? tr('The BANGDB_MANAGER_NO_UPDATE environment variable is set.') : tr('Not available in development mode.') });
     return;
   }
   if (state.mode === 'auto') {
@@ -112,13 +113,13 @@ export async function check(manual, { force = false } = {}) {
       const v = r?.updateInfo?.version;
       if (!v || compareVersions(v, app.getVersion()) <= 0) set({ status: 'none', version: v ?? '' });
       if (manual && v && compareVersions(v, app.getVersion()) <= 0) {
-        dialog.showMessageBox(win(), { type: 'info', message: "You're up to date", detail: `Current version: ${app.getVersion()}` });
+        dialog.showMessageBox(win(), { type: 'info', message: tr("You're up to date"), detail: tr('Current version: {v}', { v: app.getVersion() }) });
       } else if (manual && v) {
-        dialog.showMessageBox(win(), { type: 'info', message: `Downloading ${v}`, detail: 'When the download finishes, the app shows a Restart button; otherwise it installs when you close the app.' });
+        dialog.showMessageBox(win(), { type: 'info', message: tr('Downloading {v}', { v }), detail: tr('When the download finishes, the app shows a Restart button; otherwise it installs when you close the app.') });
       }
     } catch (e) {
       set({ status: 'error', error: e?.message ?? String(e) });
-      if (manual) dialog.showErrorBox('Update check failed', state.error);
+      if (manual) dialog.showErrorBox(tr('Update check failed'), state.error);
     }
     return;
   }
@@ -132,7 +133,7 @@ export async function check(manual, { force = false } = {}) {
     if (!latest) throw new Error('Tag not found');
     if (compareVersions(latest, app.getVersion()) <= 0) {
       set({ status: 'none', version: latest });
-      if (manual) dialog.showMessageBox(win(), { type: 'info', message: "You're up to date", detail: `Current version: ${app.getVersion()}` });
+      if (manual) dialog.showMessageBox(win(), { type: 'info', message: tr("You're up to date"), detail: tr('Current version: {v}', { v: app.getVersion() }) });
       return;
     }
     const p = prefs();
@@ -140,27 +141,27 @@ export async function check(manual, { force = false } = {}) {
     // scheduled checks and in-app checks are shown by the app window
     if (!manual) return;
     const r = await dialog.showMessageBox(win(), {
-      type: 'info', message: `New version ${latest} available (current: ${app.getVersion()})`,
-      detail: `The ${process.platform === 'darwin' ? 'macOS' : 'deb'} build does not support automatic installation. Download the new installer from the download page.`,
-      buttons: ['Open download page', 'Skip this version', 'Later'], defaultId: 0, cancelId: 2
+      type: 'info', message: tr('New version {v} available (current: {current})', { v: latest, current: app.getVersion() }),
+      detail: tr('The {platform} build does not support automatic installation. Download the new installer from the download page.', { platform: process.platform === 'darwin' ? 'macOS' : 'deb' }),
+      buttons: [tr('Open download page'), tr('Skip this version'), tr('Later')], defaultId: 0, cancelId: 2
     });
     if (r.response === 0) shell.openExternal(rel.html_url || RELEASES);
     if (r.response === 1) savePrefs({ ...p, skip: latest });
   } catch (e) {
     set({ status: 'error', error: e?.message ?? String(e) });
-    if (manual) dialog.showErrorBox('Update check failed', state.error);
+    if (manual) dialog.showErrorBox(tr('Update check failed'), state.error);
   }
 }
 
 /** Short text for the menu. */
 export function statusLabel() {
   switch (state.status) {
-    case 'checking': return 'Checking for updates…';
-    case 'downloading': return `Downloading update ${state.version} ${state.percent}%`;
-    case 'downloaded': return `Update ${state.version} ready to install (applied on restart)`;
-    case 'available': return `New version ${state.version} available`;
-    case 'none': return `Up to date (${app.getVersion()})`;
-    case 'error': return `Update error: ${state.error.slice(0, 60)}`;
-    default: return state.mode === 'off' ? 'Automatic updates off' : `Version ${app.getVersion()}`;
+    case 'checking': return tr('Checking for updates…');
+    case 'downloading': return tr('Downloading update {v} {percent}%', { v: state.version, percent: state.percent });
+    case 'downloaded': return tr('Update {v} ready to install (applied on restart)', { v: state.version });
+    case 'available': return tr('New version {v} available', { v: state.version });
+    case 'none': return tr('Up to date ({v})', { v: app.getVersion() });
+    case 'error': return tr('Update error: {error}', { error: state.error.slice(0, 60) });
+    default: return state.mode === 'off' ? tr('Automatic updates off') : tr('Version {v}', { v: app.getVersion() });
   }
 }

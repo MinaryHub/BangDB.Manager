@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import { createProxyServer, listen } from '../proxy/lib.mjs';
 import { check as checkUpdates, initUpdater, statusLabel, updateIpc } from './updater.mjs';
+import { onLanguage, setLanguage, tr } from './i18n.mjs';
 
 const REPO_URL = 'https://github.com/knoxxr/BangDB.Manager';
 const SPONSOR_URL = 'https://github.com/sponsors/knoxxr';
@@ -72,25 +73,25 @@ async function toggleLan(item) {
     showLanAddresses();
   } catch (e) {
     if (item) item.checked = false;
-    dialog.showErrorBox('Allow phone access failed', `Could not open port ${LAN_PORT}: ${e.message}`);
+    dialog.showErrorBox(tr('Allow phone access failed'), tr('Could not open port {port}: {error}', { port: LAN_PORT, error: e.message }));
   }
 }
 
 function showLanAddresses() {
   if (!lan) {
-    dialog.showMessageBox(win, { type: 'info', message: 'Phone access is off', detail: 'Turn on "Allow phone access" in the Server menu.' });
+    dialog.showMessageBox(win, { type: 'info', message: tr('Phone access is off'), detail: tr('Turn on "Allow phone access" in the Server menu.') });
     return;
   }
   const urls = lanAddresses().map((a) => `http://${a}:${lan.port}`);
   const detail = [
-    urls.length ? urls.join('\n') : `http://<this PC's IP>:${lan.port}`,
+    urls.length ? urls.join('\n') : tr("http://<this PC's IP>:{port}", { port: lan.port }),
     '',
-    'Once open, use "Add to Home Screen" to use it like an app. The firewall must allow port ' + lan.port + '.',
-    gateway ? `To use gateway databases such as PostgreSQL from a phone, enter this value as the gateway token when editing the connection:\n${TOKEN}` : ''
+    tr('Once open, use "Add to Home Screen" to use it like an app. The firewall must allow port {port}.', { port: lan.port }),
+    gateway ? tr('To use gateway databases such as PostgreSQL from a phone, enter this value as the gateway token when editing the connection:\n{token}', { token: TOKEN }) : ''
   ].join('\n');
   dialog.showMessageBox(win, {
-    type: 'info', message: 'Open in a phone browser on the same network', detail,
-    buttons: ['Copy address', 'Copy token', 'Close'], defaultId: 0, cancelId: 2
+    type: 'info', message: tr('Open in a phone browser on the same network'), detail,
+    buttons: [tr('Copy address'), tr('Copy token'), tr('Close')], defaultId: 0, cancelId: 2
   }).then((r) => {
     if (r.response === 0 && urls.length) clipboard.writeText(urls[0]);
     if (r.response === 1) clipboard.writeText(TOKEN);
@@ -100,29 +101,29 @@ function showLanAddresses() {
 function buildMenu() {
   const template = [
     ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
-    { label: 'File', submenu: [{ role: 'quit', label: 'Quit' }] },
+    { label: tr('File'), submenu: [{ role: 'quit', label: tr('Quit') }] },
     {
-      label: 'Server',
+      label: tr('Server'),
       submenu: [
-        { id: 'lan', label: `Allow phone access (port ${LAN_PORT})`, type: 'checkbox', checked: !!lan, click: (item) => toggleLan(item) },
-        { label: 'Show phone access address & token', click: showLanAddresses },
+        { id: 'lan', label: tr('Allow phone access (port {port})', { port: LAN_PORT }), type: 'checkbox', checked: !!lan, click: (item) => toggleLan(item) },
+        { label: tr('Show phone access address & token'), click: showLanAddresses },
         { type: 'separator' },
-        { label: gateway ? `DB gateway: built in (SQLite folder: ${process.env.SQLITE_ROOT})` : `DB gateway unavailable: ${gatewayError}`, enabled: false }
+        { label: gateway ? tr('DB gateway: built in (SQLite folder: {folder})', { folder: process.env.SQLITE_ROOT }) : tr('DB gateway unavailable: {error}', { error: gatewayError }), enabled: false }
       ]
     },
-    { label: 'View', submenu: [{ role: 'reload', label: 'Refresh' }, { role: 'toggleDevTools', label: 'Developer tools' }, { type: 'separator' }, { role: 'resetZoom', label: 'Actual size' }, { role: 'zoomIn', label: 'Zoom in' }, { role: 'zoomOut', label: 'Zoom out' }, { type: 'separator' }, { role: 'togglefullscreen', label: 'Full screen' }] },
-    { label: 'Help', submenu: [
-      { label: 'Check for updates', click: () => checkUpdates(true) },
+    { label: tr('View'), submenu: [{ role: 'reload', label: tr('Refresh') }, { role: 'toggleDevTools', label: tr('Developer tools') }, { type: 'separator' }, { role: 'resetZoom', label: tr('Actual size') }, { role: 'zoomIn', label: tr('Zoom in') }, { role: 'zoomOut', label: tr('Zoom out') }, { type: 'separator' }, { role: 'togglefullscreen', label: tr('Full screen') }] },
+    { label: tr('Help'), submenu: [
+      { label: tr('Check for updates'), click: () => checkUpdates(true) },
       { label: statusLabel(), enabled: false },
       { type: 'separator' },
-      { label: 'Version history', click: () => openInApp('/about/versions') },
-      { label: 'Release notes on GitHub', click: () => shell.openExternal(`${REPO_URL}/releases`) },
+      { label: tr('Version history'), click: () => openInApp('/about/versions') },
+      { label: tr('Release notes on GitHub'), click: () => shell.openExternal(`${REPO_URL}/releases`) },
       { type: 'separator' },
-      { label: 'Report a bug or ask a question…', click: () => openInApp('/about') },
-      { label: 'Browse issues', click: () => shell.openExternal(`${REPO_URL}/issues`) },
-      { label: 'Sponsor BangDB Manager ♥', click: () => shell.openExternal(SPONSOR_URL) },
-      { label: 'GitHub repository', click: () => shell.openExternal(REPO_URL) },
-      { label: `Version ${app.getVersion()}`, enabled: false }
+      { label: tr('Report a bug or ask a question…'), click: () => openInApp('/about') },
+      { label: tr('Browse issues'), click: () => shell.openExternal(`${REPO_URL}/issues`) },
+      { label: tr('Sponsor BangDB Manager ♥'), click: () => shell.openExternal(SPONSOR_URL) },
+      { label: tr('GitHub repository'), click: () => shell.openExternal(REPO_URL) },
+      { label: tr('Version {v}', { v: app.getVersion() }), enabled: false }
     ] }
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
@@ -152,11 +153,14 @@ app.whenReady().then(async () => {
   try {
     await startLocal();
   } catch (e) {
-    dialog.showErrorBox('Startup failed', `Could not start the internal server: ${e.message}`);
+    dialog.showErrorBox(tr('Startup failed'), tr('Could not start the internal server: {error}', { error: e.message }));
     app.quit();
     return;
   }
   updateIpc(ipcMain);
+  // the page reports its language; menus and dialogs follow it
+  ipcMain.on('app:set-language', (_e, l) => setLanguage(l));
+  onLanguage(() => buildMenu());
   buildMenu();
   createWindow();
   initUpdater({ getWindow: () => win, onState: () => buildMenu() });
