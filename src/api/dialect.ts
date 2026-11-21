@@ -51,6 +51,11 @@ export interface Dialect {
   dumpIdentity?: (table: string, cols: ColumnInfo[]) => { before: string[]; after: string[] };
   createDatabase?: (name: string) => string;
   dropDatabase?: (name: string) => string;
+  /**
+   * Query answering (table name as the app shows it, estimated rows) from the
+   * database's statistics without scanning tables; absent where none exist.
+   */
+  estimateRows?: string;
 }
 
 const dq = (s: string) => `"${String(s).replace(/"/g, '""')}"`;
@@ -127,6 +132,7 @@ export const SQLITE: Dialect = {
 
 export const POSTGRES: Dialect = {
   id: 'postgres', label: 'PostgreSQL',
+  estimateRows: "SELECT CASE WHEN n.nspname = 'public' THEN c.relname ELSE n.nspname || '.' || c.relname END AS name, c.reltuples::bigint AS n FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind IN ('r', 'p') AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg_toast%'",
   q: dq, qt: splitSchema(dq),
   types: [
     { decl: 'integer', hint: 'integer' }, { decl: 'bigint', hint: 'big integer' }, { decl: 'text', hint: 'string' }, { decl: 'varchar(255)', hint: 'length-limited string' },
@@ -172,6 +178,7 @@ export const POSTGRES: Dialect = {
 
 export const MYSQL: Dialect = {
   id: 'mysql', label: 'MySQL',
+  estimateRows: "SELECT TABLE_NAME AS name, TABLE_ROWS AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'",
   q: bq, qt: bq,
   types: [
     { decl: 'INT', hint: 'integer' }, { decl: 'BIGINT', hint: 'big integer' }, { decl: 'VARCHAR(255)', hint: 'string' }, { decl: 'TEXT', hint: 'long string' },
@@ -204,6 +211,7 @@ export const MYSQL: Dialect = {
 
 export const MSSQL: Dialect = {
   id: 'mssql', label: 'SQL Server',
+  estimateRows: "SELECT CASE WHEN s.name = 'dbo' THEN t.name ELSE s.name + '.' + t.name END AS name, SUM(p.rows) AS n FROM sys.tables t JOIN sys.schemas s ON s.schema_id = t.schema_id JOIN sys.partitions p ON p.object_id = t.object_id AND p.index_id IN (0, 1) GROUP BY s.name, t.name",
   q: sq, qt: splitSchema(sq),
   types: [
     { decl: 'INT', hint: 'integer' }, { decl: 'BIGINT', hint: 'big integer' }, { decl: 'NVARCHAR(255)', hint: 'Unicode string' }, { decl: 'NVARCHAR(MAX)', hint: 'long string' },

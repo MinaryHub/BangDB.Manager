@@ -528,9 +528,7 @@ function TransferTab({ conn, table, info, onChanged }: TabProps) {
         downloadText(`${table}-${stamp}.sql`, await dumpSql(conn, setExporting, [table]), 'application/sql');
       } else {
         const d = dialectOf(conn);
-        const ident = identityOf(d, info);
-        const order = ident?.kind === 'rowid' ? ident.expr : ident?.kind === 'pk' ? ident.columns.map(d.q).join(', ') : undefined;
-        const { columns, rows } = await readAll(conn, table, (n) => setExporting(`${n} rows read…`), 500, where, order);
+        const { columns, rows } = await readAll(conn, table, { onPage: (n) => setExporting(`${n.toLocaleString()} rows read…`), where, ident: identityOf(d, info) });
         const docs = rows.map((r) => Object.fromEntries(columns.map((c, i) => [c, r[i]])));
         if (fmt === 'csv') downloadText(`${table}-${stamp}.csv`, '﻿' + toCsv(docs), 'text/csv');
         else if (fmt === 'json') downloadText(`${table}-${stamp}.json`, JSON.stringify(docs, null, 2));
@@ -552,7 +550,7 @@ function TransferTab({ conn, table, info, onChanged }: TabProps) {
           <input className="inp mono grow" placeholder="WHERE clause (optional, blank for all rows)" value={where} onChange={(e) => setWhere(e.target.value)} />
           <button className="btn primary sm" disabled={!!exporting} onClick={doExport}>{exporting || 'Export'}</button>
         </div>
-        <p className="muted small" style={{ marginBottom: 0 }}>{fmt === 'sql' ? (where.trim() ? 'Generates INSERT statements for the matching rows.' : `Generates the CREATE TABLE and index definitions plus INSERT statements for all rows. It can be restored on another ${dialectOf(conn).label} with "Run SQL script".`) : 'Reads everything in batches of 500 rows, regardless of the server row limit.'}</p>
+        <p className="muted small" style={{ marginBottom: 0 }}>{fmt === 'sql' ? (where.trim() ? 'Generates INSERT statements for the matching rows.' : `Generates the CREATE TABLE and index definitions plus INSERT statements for all rows. It can be restored on another ${dialectOf(conn).label} with "Run SQL script".`) : 'Reads everything in batches of 500 rows (by key when the table has one, so large tables stay fast), regardless of the server row limit.'}</p>
       </div>
       {!isView && <ImportCard conn={conn} table={table} info={info} onChanged={onChanged} />}
     </>

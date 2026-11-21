@@ -421,3 +421,5 @@ table.data td .null { color: var(--muted); font-style: italic; }
 .shortcuts .sc { display: grid; grid-template-columns: minmax(150px, max-content) 1fr; gap: 12px; align-items: center; }
 .shortcuts .keys { white-space: nowrap; }
 @media (max-width: 520px) { .shortcuts .sc { grid-template-columns: 1fr; gap: 2px; } }
+.linkbtn { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; }
+.linkbtn:disabled { color: var(--muted); cursor: default; text-decoration: none; }

@@ -6,7 +6,7 @@
  */
 import type { ApiResult, ColumnInfo, Connection, CreateTableSpec, GoQueryResponse, GoTableInfo, IndexSpec, StorageSpec } from './types';
 import { call } from './bangdb';
-import { BANGDB, dialectOf, type Dialect, type Identity } from './dialect';
+import { BANGDB, dialectOf, identityOf, type Dialect, type Identity } from './dialect';
 import { gw } from './gateway';
 
 /** Quote an identifier for BangDB SQL. */
@@ -339,11 +339,39 @@ export function pageSql(table: string, p: PageSpec, ident: Identity | boolean = 
 export const countSql = (table: string, where?: string, d: Dialect = BANGDB) =>
   `SELECT COUNT(*) AS count FROM ${d.qt(table)}${where?.trim() ? ` WHERE ${where.trim()}` : ''}`;
 
-export async function countWhere(c: Connection, table: string, where?: string): Promise<number | undefined> {
-  const r = await goQuery(c, countSql(table, where, dialectOf(c)));
-  if (!r.ok) return undefined;
-  const v = Object.values(goRows(r.data)[0] ?? {})[0];
-  return v === undefined || v === null ? undefined : Number(v);
+// identical counts asked for at the same time (the table header and its
+// data tab on open) share one query; nothing is kept once it is answered
+const countsInFlight = new Map<string, Promise<number | undefined>>();
+
+export function countWhere(c: Connection, table: string, where?: string): Promise<number | undefined> {
+  const sql = countSql(table, where, dialectOf(c));
+  const k = `${cacheKey(c)}\u0000${sql}`;
+  const running = countsInFlight.get(k);
+  if (running) return running;
+  const p = goQuery(c, sql).then((r) => {
+    if (!r.ok) return undefined;
+    const v = Object.values(goRows(r.data)[0] ?? {})[0];
+    return v === undefined || v === null ? undefined : Number(v);
+  }).finally(() => countsInFlight.delete(k));
+  countsInFlight.set(k, p);
+  return p;
+}
+
+/**
+ * Row counts from the database's statistics, for the dialects that keep
+ * them (no table scan): name → estimated rows. Unknown tables are absent.
+ */
+export async function estimateCounts(c: Connection): Promise<Map<string, number> | null> {
+  const sql = dialectOf(c).estimateRows;
+  if (!sql) return null;
+  const r = await goQuery(c, sql);
+  if (!r.ok) return null;
+  const out = new Map<string, number>();
+  for (const [name, n] of r.data.rows) {
+    const v = Number(n);
+    if (typeof name === 'string' && Number.isFinite(v) && v >= 0) out.set(name, v);
+  }
+  return out;
 }
 
 /** Where a changed row is: its rowid / ctid, or its primary key values. */
@@ -470,19 +498,80 @@ export function orderByDependencies(tables: GoTableInfo[]): GoTableInfo[] {
   return out;
 }
 
-/** Read a whole table page by page (servers cap one answer). */
-export async function readAll(c: Connection, table: string, onPage?: (n: number) => void, pageSize = 500, where?: string, orderBy?: string): Promise<{ columns: string[]; rows: unknown[][] }> {
+export interface ReadOptions {
+  onPage?: (rowsSoFar: number) => void;
+  pageSize?: number;
+  where?: string;
+  /** How rows are identified (identityOf): rowid / primary key pages by key instead of OFFSET. */
+  ident?: Identity;
+}
+
+/** Key columns for keyset paging: what to ORDER BY, and where each key is in the answer. */
+export function keysetOf(ident: Identity | undefined, d: Dialect): { select: string; exprs: string[]; names: string[]; hidden?: string } | null {
+  if (ident?.kind === 'rowid') return { select: `${ident.expr} AS ${d.q(ROWID)}, *`, exprs: [ident.expr], names: [ROWID], hidden: ROWID };
+  if (ident?.kind === 'pk' && ident.columns.length) return { select: '*', exprs: ident.columns.map(d.q), names: ident.columns };
+  return null;
+}
+
+/**
+ * Rows after `last` in key order: k1 > v1 OR (k1 = v1 AND k2 > v2) OR …
+ * (spelled out, since SQL Server has no row-value comparison).
+ */
+export function afterKeySql(exprs: string[], last: unknown[], d: Dialect): string {
+  const terms = exprs.map((e, i) => [...exprs.slice(0, i).map((p, j) => `${p} = ${d.literal(last[j])}`), `${e} > ${d.literal(last[i])}`].join(' AND '));
+  return terms.length === 1 ? terms[0] : terms.map((t) => `(${t})`).join(' OR ');
+}
+
+/**
+ * Read a whole table page by page (servers cap one answer).
+ *
+ * With a rowid or primary key each page starts after the previous page's
+ * last key (WHERE key > …), so every page costs the same; OFFSET paging,
+ * used otherwise, re-reads all earlier rows for each page and slows down
+ * quadratically on big tables. Falls back to OFFSET (continuing where it
+ * was) when the database rejects the key query or a key is NULL / binary.
+ */
+export async function readAll(c: Connection, table: string, o: ReadOptions = {}): Promise<{ columns: string[]; rows: unknown[][] }> {
   const d = dialectOf(c);
+  const pageSize = o.pageSize ?? 500;
+  const ks = keysetOf(o.ident, d);
+  const userWhere = o.where?.trim() ? `(${o.where.trim()})` : '';
+  const order = ks ? ks.exprs.join(', ') : o.ident ? identityOrder(o.ident, d) : d.id === 'bangdb' ? 'rowid' : '';
   let columns: string[] = [];
   const rows: unknown[][] = [];
-  const base = `SELECT * FROM ${d.qt(table)}${where?.trim() ? ` WHERE ${where.trim()}` : ''}`;
-  const order = orderBy ?? (d.id === 'bangdb' ? 'rowid' : '');
-  for (let offset = 0; ; offset += pageSize) {
-    const r = await goQuery(c, d.page(base, order, pageSize, offset), undefined, { limit: pageSize });
-    if (!r.ok) throw new Error(`${table}: ${errorText(r)}`);
-    columns = r.data.columns;
-    rows.push(...r.data.rows);
-    onPage?.(rows.length);
+  let keyset = !!ks;
+  let last: unknown[] | null = null;
+  for (;;) {
+    let sql: string;
+    if (keyset && ks) {
+      const conds = [userWhere, last ? `(${afterKeySql(ks.exprs, last, d)})` : ''].filter(Boolean);
+      sql = d.page(`SELECT ${ks.select} FROM ${d.qt(table)}${conds.length ? ` WHERE ${conds.join(' AND ')}` : ''}`, order, pageSize, 0);
+    } else {
+      sql = d.page(`SELECT * FROM ${d.qt(table)}${userWhere ? ` WHERE ${userWhere}` : ''}`, order, pageSize, rows.length);
+    }
+    const r = await goQuery(c, sql, undefined, { limit: pageSize });
+    if (!r.ok) {
+      if (keyset && !last) { keyset = false; continue; }
+      throw new Error(`${table}: ${errorText(r)}`);
+    }
+    let cols = r.data.columns;
+    let page = r.data.rows;
+    if (keyset && ks) {
+      const at = ks.names.map((n) => cols.indexOf(n));
+      const tail = page[page.length - 1];
+      if (tail) {
+        last = at.map((i) => (i < 0 ? null : tail[i]));
+        // a key that cannot be compared reliably: carry on by OFFSET
+        if (at.some((i) => i < 0) || last.some((v) => v === null || v === undefined || typeof v === 'object')) keyset = false;
+      }
+      if (ks.hidden) {
+        const h = cols.indexOf(ks.hidden);
+        if (h >= 0) { cols = cols.filter((_, i) => i !== h); page = page.map((row) => row.filter((_, i) => i !== h)); }
+      }
+    }
+    columns = cols;
+    rows.push(...page);
+    o.onPage?.(rows.length);
     if (r.data.rows.length < pageSize) break;
   }
   return { columns, rows };
@@ -499,8 +588,7 @@ export async function dumpSql(c: Connection, onProgress?: (msg: string) => void,
   for (const t of tables) {
     onProgress?.(`Reading ${t.name}…`);
     out.push(`-- ${t.name}`, endStmt(t.sql ?? ''));
-    const ident = d.id === 'bangdb' || t.rowid === 'rowid' ? 'rowid' : primaryKeyColumns(t).map(d.q).join(', ');
-    const { columns, rows } = await readAll(c, t.name, (n) => onProgress?.(`${t.name}: ${n} rows`), 500, undefined, ident);
+    const { columns, rows } = await readAll(c, t.name, { onPage: (n) => onProgress?.(`${t.name}: ${n} rows`), ident: identityOf(d, t) });
     const wrap = d.dumpIdentity?.(t.name, t.columns ?? []) ?? { before: [], after: [] };
     if (rows.length) out.push(...wrap.before.map(endStmt));
     const head = `INSERT INTO ${d.qt(t.name)} (${columns.map(d.q).join(', ')}) VALUES`;

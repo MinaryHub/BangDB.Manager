@@ -19,6 +19,9 @@
 - 편집 그리드: 행 단위 메모이제이션 — 셀 하나를 고치거나 행을 선택해도 그 행만 다시 그림
 - 결과 표: 처음 300행만 그리고 "Show more / Show all" (수만 행 결과에서도 화면이 멈추지 않음)
 - 테이블 목록 캐시(1분, CREATE/DROP/ALTER/RENAME 실행 시 자동 무효화): SQL 콘솔 스키마 패널·빠른 열기가 매번 다시 조회하지 않음
+- 전체 내보내기·SQL 덤프: rowid 나 기본 키가 있는 테이블은 키 기준으로 이어 읽기(`WHERE key > 마지막 값`) — OFFSET 처럼 앞 행들을 매번 다시 읽지 않아 페이지마다 비용이 같음. PostgreSQL 25만 행 기준 5.4초 → 1.2초, 테이블이 클수록 차이가 커짐. 복합 키 지원, 키가 없거나 NULL·바이너리이거나 DB 가 키 조건을 거부하면 OFFSET 으로 이어서 읽음
+- 테이블 목록 행 수: PostgreSQL·MySQL·SQL Server 는 통계(`pg_class.reltuples`, `information_schema.TABLES`, `sys.partitions`)에서 한 번의 조회로 추정값을 가져오고, 10만 행 이상 테이블은 `≈ 250K rows` 처럼 추정값만 표시 (클릭하면 정확히 셈). 그보다 작거나 통계가 없는 테이블은 지금처럼 정확히 셈
+- 같은 COUNT 가 동시에 요청되면 한 번만 실행 (테이블을 열 때 헤더와 데이터 탭이 같은 COUNT 를 두 번 보내던 문제)
 
 ## v0.5.0 — English UI
 
