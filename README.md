@@ -271,7 +271,7 @@ src/feedback.ts GitHub 이슈 작성 URL · 진단 정보
 proxy/          정적 파일 + CORS 프록시 + DB 게이트웨이 (lib.mjs 는 데스크톱 앱과 공유)
 electron/       데스크톱 셸 (내장 프록시·게이트웨이, 휴대폰 접속 LAN 서버, updater.mjs, preload.cjs)
 scripts/        release · release-notes · bump-version · 모의 BangDB 서버 · 스토어 스크린샷 · 앱 아이콘(icon.mjs) · 기능 그래픽
-icons/ assets/  앱 아이콘 원본 SVG 변형 · Android 아이콘 생성용 PNG (npm run icons 로 다시 만듦)
+branding/ assets/ 앱 아이콘 원본 SVG 변형 · Android 아이콘 생성용 PNG (npm run icons 로 다시 만듦)
 .github/        CI·릴리즈 워크플로, 이슈 양식(버그·기능·질문), FUNDING.yml(GitHub Sponsors)
 screenshots/    스토어·앱 소개용 이미지
 ```

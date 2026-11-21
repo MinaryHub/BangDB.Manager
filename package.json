@@ -58,6 +58,7 @@
       "buildResources": "build",
       "output": "release"
     },
+    "icon": "build/icon.png",
     "files": [
       "dist/**/*",
       "proxy/**/*",

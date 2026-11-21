@@ -61,8 +61,8 @@ const variants = {
 };
 
 const svg = Object.fromEntries(Object.entries(variants).map(([k, f]) => [k, f(`bm${k[0]}`)]));
-mkdirSync('icons', { recursive: true });
-for (const [k, s] of Object.entries(svg)) writeFileSync(`icons/icon-${k}.svg`, s);
+mkdirSync('branding', { recursive: true });
+for (const [k, s] of Object.entries(svg)) writeFileSync(`branding/icon-${k}.svg`, s);
 writeFileSync('public/icon.svg', svg.rounded);
 
 const outputs = [
