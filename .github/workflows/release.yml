@@ -67,6 +67,8 @@ jobs:
       - run: npm run build
       - name: Generate Android project
         run: npx cap add android && npx cap sync android
+      - name: App icon (launcher and adaptive icons from assets/, see scripts/icon.mjs)
+        run: npx --yes @capacitor/assets@3 generate --android --assetPath assets --iconBackgroundColor '#4f8df9' --iconBackgroundColorDark '#4f8df9'
       - name: Build debug APK
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
       - name: Rename APK

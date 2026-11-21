@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { DEFAULT_ENDPOINTS, GO_KEYS, REST_KEYS } from '../api/endpoints';
 import { APP_VERSION, PLATFORM_LABEL, REPO_URL, SPONSOR_URL, openExternal, platform, systemLine } from '../appinfo';
 import { FeedbackModal } from '../components/Feedback';
-import { Icons, KindBadge, KIND_STYLE } from '../components/kinds';
+import { AppIcon, Icons, KindBadge, KIND_STYLE } from '../components/kinds';
 import type { ServerKind } from '../api/types';
 import { MOD_KEY, TopBar } from '../components/Layout';
 import type { FeedbackKind } from '../feedback';
@@ -33,7 +33,7 @@ export default function AboutPage() {
     <>
       <TopBar title={t('About')} />
       <div className="card about-hero">
-        <span className="mark">{Icons.logo}</span>
+        <AppIcon size={64} />
         <div className="grow">
           <h2>BangDB Manager</h2>
           <div className="tagline">{t('One app for seven databases — on your desktop, your phone and the web.')}</div>

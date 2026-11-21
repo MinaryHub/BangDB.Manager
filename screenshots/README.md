@@ -8,7 +8,7 @@
 | `en/android-phone-1080x1920/`, `ko/android-phone-1080x1920/` (각 6장) | 1080×1920 (9:16) PNG | Google Play 휴대폰 스크린샷 |
 | `feature-graphic-1024x500.png` | 1024×500 PNG | Google Play 기능 그래픽 |
 
-앱 아이콘은 `public/icon-512.png`(512×512)를 씁니다.
+앱 아이콘은 `public/icon-512.png`(512×512, 1024px 원본은 `build/icon.png`)입니다. 아이콘은 `npm run icons`, 기능 그래픽은 `npm run feature-graphic` 으로 다시 만듭니다.
 
 ## 데스크톱 (1920×1080)
 

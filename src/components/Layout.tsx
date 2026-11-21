@@ -4,7 +4,7 @@ import { useConnections } from '../store/store';
 import { LANGS, setLang, t, tx, useLang } from '../i18n';
 import { nextTheme, setTheme, useTheme, type Theme } from '../theme';
 import CommandPalette, { openPalette } from './CommandPalette';
-import { Icons, KindBadge, KIND_STYLE } from './kinds';
+import { AppIcon, Icons, KindBadge, KIND_STYLE } from './kinds';
 
 const THEME_ICON: Record<Theme, JSX.Element> = { auto: Icons.theme, light: Icons.sun, dark: Icons.moon };
 const THEME_LABEL: Record<Theme, string> = { auto: tx('System theme'), light: tx('Light theme'), dark: tx('Dark theme') };
@@ -63,7 +63,7 @@ export default function Layout() {
   ];
   const nav = (cls: string) => (
     <nav className={cls}>
-      {cls === 'sidenav' && <div className="brand"><span className="mark">{Icons.logo}</span>BangDB Manager</div>}
+      {cls === 'sidenav' && <div className="brand"><AppIcon size={32} />BangDB Manager</div>}
       {cls === 'sidenav' && (
         <button className="quick" onClick={openPalette} title={t('Quick open: servers, tables, pages')}>
           {Icons.search}<span className="grow">{t('Quick open…')}</span><kbd>{MOD_KEY}</kbd><kbd>K</kbd>

@@ -1,3 +1,9 @@
+## Unreleased — 앱 아이콘
+
+- 새 앱 아이콘: 하늘색→보라색 그라데이션 위에 흰 데이터베이스 원통과 편집 중인 표 카드 (BangDB 아이콘과 같은 둥근 타일, 다른 색·모양)
+- 플랫폼별 변형을 한 원본(`scripts/icon.mjs`, `npm run icons`)에서 생성: 데스크톱 설치 파일용 1024px(`build/icon.png`), 웹·PWA(`icon.svg`, 192/512px, 전체 채움 maskable 512px), Apple 터치 아이콘 180px, 파비콘 32px, Android 런처·적응형 아이콘(`assets/`, 릴리즈 빌드에서 `@capacitor/assets` 로 생성)
+- 사이드바와 정보 화면의 로고를 앱 아이콘으로, 스토어 캡처(영어·한국어)와 Google Play 기능 그래픽(`npm run feature-graphic`)도 새 아이콘으로 다시 생성
+
 ## v0.6.0 — 한국어/영어 전환, 업데이트·버전 관리, 문의·후원, 빠른 이동, 테마, 성능 개선 (2026-11-21)
 
 **정보 화면**
