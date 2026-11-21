@@ -93,7 +93,7 @@ const want = (n) => !ONLY || n.includes(ONLY);
   if (want('08')) {
     await p.goto(`${B}/about`); await p.getByText(K ? '도움말 · 피드백' : 'Help & feedback').waitFor(); await settle(p, 1200);
     await p.getByRole('button', { name: K ? '업데이트 확인' : 'Check for updates' }).click(); await p.getByText(K ? /최신 버전/ : /up to date/).waitFor({ timeout: 15000 }).catch(() => {});
-    await shot(p, 'desktop-1920x1080/08-about-updates-support');
+    await shot(p, 'desktop-1920x1080/08-about');
   }
   if (want('10')) {
     await p.goto(`${B}/about`); await p.getByRole('button', { name: K ? '버그 신고' : 'Report a bug' }).click();

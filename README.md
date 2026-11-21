@@ -5,7 +5,7 @@
 
 > *A cross-platform database manager for BangDB, PostgreSQL, MySQL/MariaDB, SQL Server, SQLite, MongoDB and Redis — edit tables like a spreadsheet, run SQL, change schemas, import, export and back up, with the same app on Windows, macOS, Linux, Android and the web.* ([English summary](#english))
 
-![BangDB Manager — 테이블 데이터를 바로 편집](./screenshots/ko/desktop-1920x1080/01-table-data.png)
+![BangDB Manager — 테이블 데이터를 바로 편집](./screenshots/en/desktop-1920x1080/01-table-data.png)
 
 ## 다운로드
 
@@ -41,21 +41,21 @@
 
 | | |
 |---|---|
-| ![SQL 콘솔](./screenshots/ko/desktop-1920x1080/02-sql-console.png) | ![테이블 목록](./screenshots/ko/desktop-1920x1080/03-tables.png) |
+| ![SQL 콘솔](./screenshots/en/desktop-1920x1080/02-sql-console.png) | ![테이블 목록](./screenshots/en/desktop-1920x1080/03-tables.png) |
 | SQL 콘솔 — 스키마 패널, 문장 단위 실행, 결과 정렬 | 테이블 목록 — 행 수(큰 테이블은 ≈ 추정), 뷰 |
-| ![빠른 열기](./screenshots/ko/desktop-1920x1080/04-quick-open.png) | ![구조 편집](./screenshots/ko/desktop-1920x1080/05-schema.png) |
+| ![빠른 열기](./screenshots/en/desktop-1920x1080/04-quick-open.png) | ![구조 편집](./screenshots/en/desktop-1920x1080/05-schema.png) |
 | 빠른 열기 (Ctrl/⌘+K) | 구조 편집 — 컬럼·제약 조건 |
-| ![서버 목록](./screenshots/ko/desktop-1920x1080/06-servers.png) | ![서버 개요](./screenshots/ko/desktop-1920x1080/07-server-overview.png) |
+| ![서버 목록](./screenshots/en/desktop-1920x1080/06-servers.png) | ![서버 개요](./screenshots/en/desktop-1920x1080/07-server-overview.png) |
 | 서버 목록 — 종류별 아이콘, 연결 상태 | BangDB 서버 개요 — 통계, 덤프/복원, 유지 보수 |
-| ![업데이트·문의·후원](./screenshots/ko/desktop-1920x1080/08-about-updates-support.png) | ![버전 기록](./screenshots/ko/desktop-1920x1080/09-version-history.png) |
-| 정보 — 업데이트, 문의, 후원 | 버전 기록 — 릴리즈 노트, 이전 버전 설치 |
+| ![앱 소개](./screenshots/en/desktop-1920x1080/08-about.png) | ![버전 기록](./screenshots/en/desktop-1920x1080/09-version-history.png) |
+| 정보 — 앱 소개, 기능, 지원 DB, 업데이트 | 버전 기록 — 릴리즈 노트, 이전 버전 설치 |
 
 <p>
-<img src="./screenshots/ko/android-phone-1080x1920/01-servers.png" width="19%" alt="서버 목록 (휴대폰)">
-<img src="./screenshots/ko/android-phone-1080x1920/02-table-data.png" width="19%" alt="테이블 데이터 (휴대폰)">
-<img src="./screenshots/ko/android-phone-1080x1920/03-sql-console.png" width="19%" alt="SQL 콘솔 (휴대폰)">
-<img src="./screenshots/ko/android-phone-1080x1920/05-quick-open.png" width="19%" alt="빠른 열기 (휴대폰)">
-<img src="./screenshots/ko/android-phone-1080x1920/06-about.png" width="19%" alt="정보 (휴대폰)">
+<img src="./screenshots/en/android-phone-1080x1920/01-servers.png" width="19%" alt="서버 목록 (휴대폰)">
+<img src="./screenshots/en/android-phone-1080x1920/02-table-data.png" width="19%" alt="테이블 데이터 (휴대폰)">
+<img src="./screenshots/en/android-phone-1080x1920/03-sql-console.png" width="19%" alt="SQL 콘솔 (휴대폰)">
+<img src="./screenshots/en/android-phone-1080x1920/05-quick-open.png" width="19%" alt="빠른 열기 (휴대폰)">
+<img src="./screenshots/en/android-phone-1080x1920/06-about.png" width="19%" alt="정보 (휴대폰)">
 </p>
 
 스토어·앱 소개 사이트 등록용 원본 이미지는 [`screenshots/`](./screenshots) 에 있습니다 — 한국어(`ko/`)·영어(`en/`) 화면 각각 데스크톱 1920×1080, 휴대폰 1080×1920, 그리고 기능 그래픽 1024×500.
@@ -90,8 +90,6 @@
 - **후원** — 도움이 되었다면 [GitHub Sponsors](https://github.com/sponsors/knoxxr) 로 개발을 후원할 수 있습니다 (앱의 정보 화면, 데스크톱 도움말 메뉴, 저장소의 Sponsor 버튼).
 
 ## English
-
-![BangDB Manager](./screenshots/en/desktop-1920x1080/01-table-data.png)
 
 **BangDB Manager** is a free database manager (source on GitHub) for **BangDB, PostgreSQL, MySQL/MariaDB, SQL Server, SQLite, MongoDB and Redis**. One app runs on Windows, macOS, Linux, Android and in the browser (installable PWA).
 

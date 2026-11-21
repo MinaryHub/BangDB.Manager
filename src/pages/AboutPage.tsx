@@ -3,12 +3,25 @@ import { Link, useLocation } from 'react-router-dom';
 import { DEFAULT_ENDPOINTS, GO_KEYS, REST_KEYS } from '../api/endpoints';
 import { APP_VERSION, PLATFORM_LABEL, REPO_URL, SPONSOR_URL, openExternal, platform, systemLine } from '../appinfo';
 import { FeedbackModal } from '../components/Feedback';
-import { Icons } from '../components/kinds';
+import { Icons, KindBadge, KIND_STYLE } from '../components/kinds';
+import type { ServerKind } from '../api/types';
 import { MOD_KEY, TopBar } from '../components/Layout';
 import type { FeedbackKind } from '../feedback';
 import { LANGS, setLang, t, tx, useLang } from '../i18n';
 import { setTheme, useTheme, type Theme } from '../theme';
 import { applyUpdate, checkForUpdates, setAutoUpdate, useUpdate, type UpdateState } from '../update';
+
+/** What the app does, for the About page (and the store listing screenshot of it). */
+const FEATURES: { icon: JSX.Element; title: string; text: string }[] = [
+  { icon: Icons.edit, title: tx('Spreadsheet-style editing'), text: tx('Edit cells in place, add and delete rows, and save everything in one transaction.') },
+  { icon: Icons.code, title: tx('SQL console'), text: tx('A schema panel, run the statement at the cursor, EXPLAIN, parameters, history and exports.') },
+  { icon: Icons.db, title: tx('Schema tools'), text: tx('Create tables and views, change columns and indexes, and read the DDL.') },
+  { icon: Icons.copy, title: tx('Import, export and back up'), text: tx('CSV, JSON and SQL in and out, and full dumps that stay fast on big tables.') },
+  { icon: Icons.server, title: tx('MongoDB and Redis'), text: tx('Collections, documents and aggregation; a key browser with an editor for every type.') },
+  { icon: Icons.search, title: tx('Quick open'), text: tx('Jump to any table, server or page with Ctrl/⌘+K.') },
+  { icon: Icons.globe, title: tx('Runs everywhere'), text: tx('Windows, macOS, Linux, Android and the browser — in English or Korean, light or dark.') },
+  { icon: Icons.history, title: tx('Always up to date'), text: tx('Automatic updates, release notes and earlier versions in the version history.') }
+];
 
 export default function AboutPage() {
   const theme = useTheme();
@@ -23,8 +36,30 @@ export default function AboutPage() {
         <span className="mark">{Icons.logo}</span>
         <div className="grow">
           <h2>BangDB Manager</h2>
+          <div className="tagline">{t('One app for seven databases — on your desktop, your phone and the web.')}</div>
           <div className="muted small">{t('Version {v}', { v: APP_VERSION })} · {t(PLATFORM_LABEL[platform()])} · {systemLine()}</div>
-          <p className="small" style={{ margin: '8px 0 0' }}>{t('Manage BangDB, PostgreSQL, MySQL/MariaDB, SQL Server, SQLite, MongoDB and Redis from one app on Windows, macOS, Linux, Android and the web. Connection details stay on this device.')}</p>
+        </div>
+      </div>
+
+      <div className="card about-app">
+        <b>{t('About BangDB Manager')}</b>
+        <p>{t('BangDB Manager is a cross-platform database manager for BangDB, PostgreSQL, MySQL/MariaDB, SQL Server, SQLite, MongoDB and Redis. Browse and edit tables like a spreadsheet, run SQL, change schemas, and import, export and back up your data — with the same app on Windows, macOS, Linux, Android and the web.')}</p>
+        <p>{t('The desktop app has a database gateway built in, so every supported database connects without installing anything else, and it can serve the app to phones on the same Wi-Fi. Connection details, including passwords, are stored only on this device.')}</p>
+        <div className="feature-grid">
+          {FEATURES.map((f) => (
+            <div key={f.title} className="feature">
+              <span className="fi">{f.icon}</span>
+              <div><b>{t(f.title)}</b><span>{t(f.text)}</span></div>
+            </div>
+          ))}
+        </div>
+        <div className="supported">
+          <span className="muted small">{t('Supported databases')}</span>
+          <div className="kinds">
+            {(['go', 'rest', 'postgres', 'mysql', 'mssql', 'sqlite', 'mongodb', 'redis'] as ServerKind[]).map((k) => (
+              <span key={k} className="kindchip"><KindBadge kind={k} small />{KIND_STYLE[k].label}</span>
+            ))}
+          </div>
         </div>
       </div>
 
