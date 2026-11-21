@@ -31,10 +31,11 @@
 
 ## MinaryHub 등록
 
-[MinaryHub](https://minaryhub.github.io) 는 **MinaryHub 조직의 공개 저장소**를 자동으로 모아 보여 줍니다.
+저장소가 MinaryHub 조직(`MinaryHub/BangDB.Manager`)에 있으므로 [MinaryHub](https://minaryhub.github.io) 가 자동으로 목록에 올립니다 (3시간마다, 또는 릴리즈 직후 — 아래).
 
-- 저장소가 MinaryHub 조직에 있으면(이전 또는 조직에서 새로 만들기 — 포크는 제외됨) 이 폴더를 그대로 읽습니다: 영어 페이지는 `en/`, 한국어 페이지는 `ko/` 를 쓰고, 카드에는 그 안의 `desktop-1920x1080/` 묶음이 파일 이름 순으로 쓰이고(최대 10장), `feature-graphic`·`icon` 이름은 건너뜁니다. 공유 미리보기는 첫 PNG(01)를 씁니다. 이미지를 바꾸면 사이트를 다시 배포하지 않아도 10분 안에 반영됩니다.
-- 설명·주요 기능·분류는 MinaryHub 저장소의 `config.json` 에 넣습니다. 붙여 넣을 내용은 [`docs/minaryhub.json`](../docs/minaryhub.json) 에 있습니다 (`overrides` = 조직 저장소일 때, `apps` = 저장소를 옮기지 않고 링크만 올릴 때 — 이 경우 다운로드 버튼과 통계는 나오지 않습니다).
+- 이 폴더를 그대로 읽습니다: 영어 페이지는 `en/`, 한국어 페이지는 `ko/` 를 쓰고, 카드에는 그 안의 `desktop-1920x1080/` 묶음이 파일 이름 순으로 쓰이고(최대 10장), `feature-graphic`·`icon` 이름은 건너뜁니다. 공유 미리보기는 첫 PNG(01)를 씁니다. 기본 브랜치(main)의 이미지를 바꾸면 사이트를 다시 배포하지 않아도 10분 안에 반영됩니다.
+- 표시 이름·설명·주요 기능·분류는 MinaryHub 저장소 `config.json` 의 `overrides` 에 넣습니다. 붙여 넣을 내용: [`docs/minaryhub.json`](../docs/minaryhub.json).
+- 릴리즈 직후 바로 반영하려면 조직(또는 이 저장소) Secrets 에 `SITE_DISPATCH_TOKEN`(MinaryHub.github.io 저장소에 Contents: Read and write 권한만 준 fine-grained PAT)을 넣으세요. 릴리즈 워크플로의 마지막 단계가 사이트 갱신을 요청합니다(토큰이 없으면 건너뜀).
 - 릴리즈 파일 이름(`…-windows-x64-setup.exe`, `…-macos-arm64.dmg`, `…-linux-x86_64.AppImage`, `…-android-debug.apk`)은 MinaryHub 의 OS·아키텍처 분류 규칙에 이미 맞습니다.
 - 저장소 About(⚙)의 설명과 토픽도 카드에 쓰입니다. 권장: 설명 "Cross-platform manager for BangDB, PostgreSQL, MySQL, SQL Server, SQLite, MongoDB and Redis", 토픽 `database` `database-management` `sql` `postgresql` `mysql` `sqlite` `mongodb` `redis` `electron` `pwa`.
 

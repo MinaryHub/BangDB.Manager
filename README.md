@@ -9,7 +9,7 @@
 
 ## 다운로드
 
-**[최신 버전 받기 → Releases](https://github.com/knoxxr/BangDB.Manager/releases/latest)** · 무료
+**[최신 버전 받기 → Releases](https://github.com/MinaryHub/BangDB.Manager/releases/latest)** · 무료
 
 | 플랫폼 | 파일 | 설치 |
 |---|---|---|
@@ -86,7 +86,7 @@
 
 ## 문의 · 후원
 
-- **버그 신고 · 기능 요청 · 질문** — 앱의 **정보 → 도움말 · 피드백**(또는 Ctrl/⌘+K → "Report a bug")에서 제목과 내용을 쓰면 GitHub 새 이슈 화면이 내용이 채워진 채로 열립니다. 앱 버전·플랫폼·OS·저장된 서버 종류가 함께 들어가며(서버 주소·이름·데이터는 넣지 않음), 미리 보고 끌 수 있습니다. 직접 쓰려면 [Issues](https://github.com/knoxxr/BangDB.Manager/issues/new/choose).
+- **버그 신고 · 기능 요청 · 질문** — 앱의 **정보 → 도움말 · 피드백**(또는 Ctrl/⌘+K → "Report a bug")에서 제목과 내용을 쓰면 GitHub 새 이슈 화면이 내용이 채워진 채로 열립니다. 앱 버전·플랫폼·OS·저장된 서버 종류가 함께 들어가며(서버 주소·이름·데이터는 넣지 않음), 미리 보고 끌 수 있습니다. 직접 쓰려면 [Issues](https://github.com/MinaryHub/BangDB.Manager/issues/new/choose).
 - **후원** — 도움이 되었다면 [GitHub Sponsors](https://github.com/sponsors/knoxxr) 로 개발을 후원할 수 있습니다 (앱의 정보 화면, 데스크톱 도움말 메뉴, 저장소의 Sponsor 버튼).
 
 ## English
@@ -105,7 +105,7 @@
 - The desktop app bundles a gateway for PostgreSQL, MySQL, SQL Server, SQLite, MongoDB and Redis, and can serve the app to phones on the same network
 - Connection details are stored only on your device
 
-**[Download the latest release](https://github.com/knoxxr/BangDB.Manager/releases/latest)** · [Report an issue](https://github.com/knoxxr/BangDB.Manager/issues/new/choose) · [Sponsor](https://github.com/sponsors/knoxxr)
+**[Download the latest release](https://github.com/MinaryHub/BangDB.Manager/releases/latest)** · [Report an issue](https://github.com/MinaryHub/BangDB.Manager/issues/new/choose) · [Sponsor](https://github.com/sponsors/knoxxr)
 
 ---
 
@@ -279,4 +279,4 @@ screenshots/    스토어·앱 소개용 이미지
 
 ## 링크
 
-[Releases](https://github.com/knoxxr/BangDB.Manager/releases) · [Issues](https://github.com/knoxxr/BangDB.Manager/issues) · [Sponsor](https://github.com/sponsors/knoxxr) · [CHANGELOG](./CHANGELOG.md)
+[Releases](https://github.com/MinaryHub/BangDB.Manager/releases) · [Issues](https://github.com/MinaryHub/BangDB.Manager/issues) · [Sponsor](https://github.com/sponsors/knoxxr) · [CHANGELOG](./CHANGELOG.md)

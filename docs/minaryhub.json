@@ -1,5 +1,5 @@
 {
-  "_comment": "MinaryHub (minaryhub.github.io) config.json entries for BangDB Manager. Use \"overrides\" when the repository is in the MinaryHub organisation, or \"apps\" to list it without moving it. See screenshots/README.md.",
+  "_comment": "MinaryHub (minaryhub.github.io) config.json entry for BangDB Manager, which lives in the MinaryHub organisation (MinaryHub/BangDB.Manager): the site lists it automatically with its releases and its screenshots/ folder; paste this into \"overrides\" for the display name, descriptions, category and feature lists.",
   "overrides": {
     "BangDB.Manager": {
       "displayName": "BangDB Manager",
@@ -29,30 +29,5 @@
         "문의·후원 — 앱에서 GitHub Issues 로 버그 신고·기능 요청·질문, GitHub Sponsors 로 개발 후원."
       ]
     }
-  },
-  "apps": [
-    {
-      "name": "BangDB.Manager",
-      "displayName": "BangDB Manager",
-      "description": "BangDB·PostgreSQL·MySQL/MariaDB·SQL Server·SQLite·MongoDB·Redis 를 한 앱에서 관리하는 데이터베이스 관리 도구.",
-      "descriptionEn": "A database manager for BangDB, PostgreSQL, MySQL/MariaDB, SQL Server, SQLite, MongoDB and Redis on Windows, macOS, Linux, Android and the web.",
-      "url": "https://github.com/knoxxr/BangDB.Manager/releases/latest",
-      "homepage": "https://github.com/knoxxr/BangDB.Manager",
-      "icon": "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/public/icon-512.png",
-      "screenshots": [
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/01-table-data.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/02-sql-console.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/03-tables.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/04-quick-open.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/05-schema.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/06-servers.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/08-about-updates-support.png",
-        "https://raw.githubusercontent.com/knoxxr/BangDB.Manager/main/screenshots/en/desktop-1920x1080/09-version-history.png"
-      ],
-      "category": "DeveloperApplication",
-      "language": "TypeScript",
-      "topics": ["database", "sql", "postgresql", "mysql", "sqlite", "mongodb", "redis", "electron", "pwa"],
-      "updated": "2026-11-21"
-    }
-  ]
+  }
 }

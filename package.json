@@ -47,7 +47,7 @@
     "name": "knoxxr",
     "email": "knoxxr@users.noreply.github.com"
   },
-  "homepage": "https://github.com/knoxxr/BangDB.Manager",
+  "homepage": "https://github.com/MinaryHub/BangDB.Manager",
   "build": {
     "appId": "kr.smic.bangdbmanager",
     "productName": "BangDB Manager",
@@ -104,7 +104,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "knoxxr",
+        "owner": "MinaryHub",
         "repo": "BangDB.Manager",
         "releaseType": "release"
       }

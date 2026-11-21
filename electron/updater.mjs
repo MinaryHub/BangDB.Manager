@@ -15,7 +15,7 @@ import updater from 'electron-updater';
 import { tr } from './i18n.mjs';
 
 const { autoUpdater } = updater;
-export const REPO = 'knoxxr/BangDB.Manager';
+export const REPO = 'MinaryHub/BangDB.Manager';
 const RELEASES = `https://github.com/${REPO}/releases/latest`;
 const CHECK_EVERY = 4 * 60 * 60 * 1000;
 

@@ -4,7 +4,7 @@ import { diagnostics, issueUrl } from './feedback';
 describe('feedback', () => {
   it('pre-fills the issue form by field id', () => {
     const u = new URL(issueUrl('bug', ' Save fails ', 'It broke', 'App: x'));
-    expect(u.origin + u.pathname).toBe('https://github.com/knoxxr/BangDB.Manager/issues/new');
+    expect(u.origin + u.pathname).toBe('https://github.com/MinaryHub/BangDB.Manager/issues/new');
     expect(u.searchParams.get('template')).toBe('bug_report.yml');
     expect(u.searchParams.get('labels')).toBe('bug');
     expect(u.searchParams.get('title')).toBe('[Bug] Save fails');

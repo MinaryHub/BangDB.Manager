@@ -3,7 +3,7 @@ import { tx } from './i18n';
 import { isElectron } from './platform';
 
 /** Where the project lives: releases, issues and sponsorship all point here. */
-export const REPO = 'knoxxr/BangDB.Manager';
+export const REPO = 'MinaryHub/BangDB.Manager';
 export const REPO_URL = `https://github.com/${REPO}`;
 export const RELEASES_URL = `${REPO_URL}/releases`;
 export const ISSUES_URL = `${REPO_URL}/issues`;

@@ -12,7 +12,7 @@ import { createProxyServer, listen } from '../proxy/lib.mjs';
 import { check as checkUpdates, initUpdater, statusLabel, updateIpc } from './updater.mjs';
 import { onLanguage, setLanguage, tr } from './i18n.mjs';
 
-const REPO_URL = 'https://github.com/knoxxr/BangDB.Manager';
+const REPO_URL = 'https://github.com/MinaryHub/BangDB.Manager';
 const SPONSOR_URL = 'https://github.com/sponsors/knoxxr';
 
 const here = dirname(fileURLToPath(import.meta.url));

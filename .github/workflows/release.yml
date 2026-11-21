@@ -121,3 +121,18 @@ jobs:
             release/*.deb
             release/*.dmg
             release/latest*.yml
+
+  # MinaryHub (minaryhub.github.io) lists this repository; ask it to refresh
+  # now instead of at its next 3-hourly run. Skipped without the token.
+  notify-site:
+    name: Refresh MinaryHub site
+    needs: [web, android, desktop]
+    if: always() && needs.web.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch release-published to MinaryHub.github.io
+        env:
+          GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "SITE_DISPATCH_TOKEN not set — skipped"; exit 0; fi
+          gh api repos/MinaryHub/MinaryHub.github.io/dispatches -f event_type=release-published
